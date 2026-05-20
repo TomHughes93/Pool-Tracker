@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pool Tracker</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 15px; background-color: #f4f4f4; color: #333;">
+
+    <h2 style="margin-top: 0; text-align: center;">🎱 Pool Tracker</h2>
+
+    <div style="text-align: center; margin-bottom: 15px;">
+        <button id="btn-toggle-setup" style="padding: 8px 12px; margin: 2px; background-color: #6c757d; color: white; border: none; border-radius: 4px; font-size: 12px;">Toggle Setup</button>
+        <button id="btn-toggle-preview" style="padding: 8px 12px; margin: 2px; background-color: #6c757d; color: white; border: none; border-radius: 4px; font-size: 12px;">Toggle Live Data</button>
+    </div>
+
+    <div id="setup-container" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; background-color: #fff; border-radius: 8px;">
+        <h3 style="margin-top: 0;">Match Setup</h3>
+        <div style="margin-bottom: 10px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 3px;">Player 1 (Home):</label>
+            <select id="select-p1" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px;">
+                <option value="Ginge">Ginge (Named)</option>
+                <option value="Schmidty">Schmidty (Named)</option>
+                <option value="Guest 1">Guest 1</option>
+                <option value="Guest 2">Guest 2</option>
+            </select>
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: bold; margin-bottom: 3px;">Player 2 (Away):</label>
+            <select id="select-p2" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px;">
+                <option value="Schmidty">Schmidty (Named)</option>
+                <option value="Ginge">Ginge (Named)</option>
+                <option value="Guest 1">Guest 1</option>
+                <option value="Guest 2">Guest 2</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="scoreboard" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; background-color: #fff; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <h3 style="margin: 0 0 5px 0; font-size: 20px;">Turn: <span id="current-player" style="color: #007bff;">Ginge</span></h3>
+        <p style="margin: 0; font-size: 16px; font-weight: bold; color: #555;">Visits Remaining: <span id="visits-left">1</span></p>
+    </div>
+
+    <div id="game-log" style="border: 1px solid #ccc; padding: 10px; height: 110px; overflow-y: scroll; margin-bottom: 15px; background-color: #fff; border-radius: 8px; font-size: 14px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+        <p style="margin: 5px 0; color: #777;"><em>Awaiting first shot...</em></p>
+    </div>
+
+    <div id="controls" style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; gap: 10px;">
+            <button id="btn-pot" style="flex: 1; padding: 20px 10px; font-size: 16px; font-weight: bold; background-color: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer;">Ball Potted</button>
+            <button id="btn-miss" style="flex: 1; padding: 20px 10px; font-size: 16px; font-weight: bold; background-color: #dc3545; color: white; border: none; border-radius: 8px; cursor: pointer;">Miss</button>
+        </div>
+        
+        <button id="btn-foul-white" style="width: 100%; padding: 15px; font-size: 15px; font-weight: bold; background-color: #f8f9fa; color: #212529; border: 2px solid #ccc; border-radius: 8px; cursor: pointer;">Foul (Potted White)</button>
+        <button id="btn-foul-miss" style="width: 100%; padding: 15px; font-size: 15px; font-weight: bold; background-color: #ffc107; color: #212529; border: none; border-radius: 8px; cursor: pointer;">Foul (No Hit/Wrong Ball)</button>
+        <button id="btn-foul-pot" style="width: 100%; padding: 15px; font-size: 15px; font-weight: bold; background-color: #fd7e14; color: white; border: none; border-radius: 8px; cursor: pointer;">Foul (Opponent Potted)</button>
+        <button id="btn-black" style="width: 100%; padding: 18px; font-size: 16px; font-weight: bold; background-color: #212529; color: white; border: 2px solid #000; border-radius: 8px; cursor: pointer;">Pot Black (Win Game)</button>
+        
+        <div style="display: flex; gap: 10px; margin-top: 5px;">
+            <button id="btn-undo" style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold; background-color: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer;">↩ Undo Mistake</button>
+            <button id="btn-reset" style="flex: 1; padding: 12px; font-size: 14px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">New Game</button>
+        </div>
+    </div>
+
+    <div id="preview-container">
+        <hr style="margin: 20px 0; border-top: 2px dashed #bbb;">
+        <h3 style="margin-top: 0;">Live Database Preview (JSON Format)</h3>
+        <pre id="data-preview" style="background-color: #222; color: #00ff00; padding: 15px; max-height: 150px; overflow-y: scroll; font-family: monospace; border-radius: 6px; font-size: 12px; margin: 0;">[]</pre>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://dwpwxywkexjxedkgvgyi.supabase.co"; 
+        const SUPABASE_KEY = "sb_publishable_Rp20XzRyU0G_zoW9VdYCqw_pDLgMheQ";
+
+        // 1. STATE VARIABLES
+        let currentPlayer = "Ginge";
+        let visitsLeft = 1;
+        let isGameOver = false;
+        let shotNumber = 1;
+        let shotLog = [];
+        let currentMatchId = "";
+        let previousStates = []; // History array to track scoreboard history for undo functionality
+
+        // 2. CONNECT TO HTML ELEMENTS
+        const playerDisplay = document.getElementById("current-player");
+        const visitsDisplay = document.getElementById("visits-left");
+        const gameLog = document.getElementById("game-log");
+        const dataPreview = document.getElementById("data-preview");
+        
+        const p1Select = document.getElementById("select-p1");
+        const p2Select = document.getElementById("select-p2");
+        const setupContainer = document.getElementById("setup-container");
+        const previewContainer = document.getElementById("preview-container");
+
+        // TOGGLE VISIBILITY FOR PHONE SCREENS
+        document.getElementById("btn-toggle-setup").addEventListener("click", function() {
+            setupContainer.style.display = (setupContainer.style.display === "none") ? "block" : "none";
+        });
+        document.getElementById("btn-toggle-preview").addEventListener("click", function() {
+            previewContainer.style.display = (previewContainer.style.display === "none") ? "block" : "none";
+        });
+
+        p1Select.addEventListener("change", function() {
+            if (shotNumber === 1) {
+                currentPlayer = p1Select.value;
+                playerDisplay.textContent = currentPlayer;
+                saveAppStateToCache();
+            }
+        });
+
+        // RECOVERY ENGINE: Checks if the browser crashed or reloaded mid-game
+        function loadAppStateFromCache() {
+            let savedState = localStorage.getItem("active_pool_match_state");
+            if (savedState) {
+                let state = JSON.parse(savedState);
+                currentPlayer = state.currentPlayer;
+                visitsLeft = state.visitsLeft;
+                isGameOver = state.isGameOver;
+                shotNumber = state.shotNumber;
+                shotLog = state.shotLog;
+                currentMatchId = state.currentMatchId;
+                previousStates = state.previousStates || [];
+                
+                p1Select.value = state.p1Value;
+                p2Select.value = state.p2Value;
+
+                playerDisplay.textContent = currentPlayer;
+                visitsDisplay.textContent = visitsLeft;
+                dataPreview.textContent = JSON.stringify(shotLog, null, 2);
+                
+                gameLog.innerHTML = `<p style="color: #fd7e14; font-weight: bold;">[System] Unfinished match recovered from cache. Resume play.</p>`;
+            }
+        }
+
+        // SAVE STATE ENGINE: Backs up data to the device on every single interaction
+        function saveAppStateToCache() {
+            let state = {
+                currentPlayer: currentPlayer,
+                visitsLeft: visitsLeft,
+                isGameOver: isGameOver,
+                shotNumber: shotNumber,
+                shotLog: shotLog,
+                currentMatchId: currentMatchId,
+                previousStates: previousStates,
+                p1Value: p1Select.value,
+                p2Value: p2Select.value
+            };
+            localStorage.setItem("active_pool_match_state", JSON.stringify(state));
+        }
+
+        // SAVE STATE SNAPSHOT BEFORE A SHOT OCCURS (For Undo Engine)
+        function takeStateSnapshot() {
+            previousStates.push({
+                currentPlayer: currentPlayer,
+                visitsLeft: visitsLeft,
+                isGameOver: isGameOver,
+                shotNumber: shotNumber
+            });
+        }
+
+        // FUNCTION TO CAPTURE A SHOT ROW
+        function recordShotData(resultType, matchResult = "In Progress") {
+            // Generate a fresh unique match identifier if this is the opening shot
+            if (shotNumber === 1) {
+                currentMatchId = "match_" + new Date().toISOString().replace(/[:.]/g, "-");
+            }
+
+            let p1Name = p1Select.value;
+            let p2Name = p2Select.value;
+            let isGuestMatch = (p1Name.includes("Guest") || p2Name.includes("Guest"));
+
+            let shotRow = {
+                match_id: currentMatchId,
+                shot_number: shotNumber,
+                player_1_home: p1Name,
+                player_2_away: p2Name,
+                active_player: currentPlayer,
+                shot_result: resultType,
+                visits_at_shot: visitsLeft,
+                dataset_type: isGuestMatch ? "Guest Play" : "Named Analytics Match",
+                match_result: matchResult,
+                timestamp: new Date().toISOString()
+            };
+
+            shotLog.push(shotRow);
+            shotNumber++;
+            dataPreview.textContent = JSON.stringify(shotLog, null, 2);
+
+            // Trigger immediate local cache updates
+            saveAppStateToCache();
+
+            gameLog.scrollTop = gameLog.scrollHeight;
+            dataPreview.scrollTop = dataPreview.scrollHeight;
+        }
+
+        // LIVE DATABASE UPLOAD WITH LOSS PROTECTION
+        async function uploadMatchToCloud() {
+            gameLog.innerHTML += `<p style="color: blue; font-weight: bold;">[Live Database] Uploading match data...</p>`;
+            gameLog.scrollTop = gameLog.scrollHeight;
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/pool_shots`, {
+                    method: "POST",
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": `Bearer ${SUPABASE_KEY}`,
+                        "Content-Type": "application/json",
+                        "Prefer": "return=minimal"
+                    },
+                    body: JSON.stringify(shotLog)
+                });
+
+                if (response.ok) {
+                    gameLog.innerHTML += `<p style="color: #28a745; font-weight: bold;">[Live Database] Success! Match saved to cloud database.</p>`;
+                    // Wipe the temporary recovery cache clean since data reached the warehouse safely
+                    localStorage.removeItem("active_pool_match_state");
+                } else {
+                    gameLog.innerHTML += `<p style="color: #dc3545; font-weight: bold;">[Live Database] Server rejected data. Cache preserved.</p>`;
+                }
+            } catch (error) {
+                gameLog.innerHTML += `<p style="color: #dc3545; font-weight: bold;">[Live Database] Network failure. Saved to local cache.</p>`;
+            }
+            gameLog.scrollTop = gameLog.scrollHeight;
+        }
+
+        // 3. THE "BALL POTTED" BUTTON FUNCTION
+        document.getElementById("btn-pot").addEventListener("click", function() {
+            if (isGameOver) return;
+            takeStateSnapshot();
+            recordShotData("Pot");
+            gameLog.innerHTML += `<p style="color: green; margin: 5px 0;">✔ ${currentPlayer} potted a ball. Turn continues.</p>`;
+            saveAppStateToCache();
+        });
+
+        // 4. THE "MISS" BUTTON FUNCTION
+        document.getElementById("btn-miss").addEventListener("click", function() {
+            if (isGameOver) return;
+            takeStateSnapshot();
+            recordShotData("Miss");
+
+            if (visitsLeft > 1) {
+                visitsLeft = 1;
+                gameLog.innerHTML += `<p style="margin: 5px 0; color: #555;">❌ ${currentPlayer} missed first visit. 1 visit left.</p>`;
+            } else {
+                currentPlayer = (currentPlayer === p1Select.value) ? p2Select.value : p1Select.value;
+                visitsLeft = 1; 
+                gameLog.innerHTML += `<p style="margin: 5px 0; color: #333;">🔄 Shot missed. Turn switched to ${currentPlayer}.</p>`;
+            }
+
+            playerDisplay.textContent = currentPlayer;
+            visitsDisplay.textContent = visitsLeft;
+            saveAppStateToCache();
+        });
+
+        // 5. THE "FOUL (POTTED WHITE)" BUTTON FUNCTION
+        document.getElementById("btn-foul-white").addEventListener("click", function() {
+            if (isGameOver) return;
+            takeStateSnapshot();
+            const foulingPlayer = currentPlayer;
+
+            recordShotData("Foul: Potted White");
+
+            currentPlayer = (currentPlayer === p1Select.value) ? p2Select.value : p1Select.value;
+            visitsLeft = 2;
+
+            playerDisplay.textContent = currentPlayer;
+            visitsDisplay.textContent = visitsLeft;
+
+            gameLog.innerHTML += `<p style="color: #dc3545; margin: 5px 0; font-weight: bold;">⚪ Foul by ${foulingPlayer} (Potted White). ${currentPlayer} has 2 visits.</p>`;
+            saveAppStateToCache();
+        });
+
+        // 6. THE "FOUL (NO HIT)" BUTTON FUNCTION
+        document.getElementById("btn-foul-miss").addEventListener("click", function() {
+            if (isGameOver) return;
+            takeStateSnapshot();
+            const foulingPlayer = currentPlayer;
+
+            recordShotData("Foul: No Hit");
+
+            currentPlayer = (currentPlayer === p1Select.value) ? p2Select.value : p1Select.value;
+            visitsLeft = 2;
+
+            playerDisplay.textContent = currentPlayer;
+            visitsDisplay.textContent = visitsLeft;
+
+            gameLog.innerHTML += `<p style="color: red; margin: 5px 0; font-weight: bold;">⚠️ Foul by ${foulingPlayer} (No Hit). ${currentPlayer} has 2 visits.</p>`;
+            saveAppStateToCache();
+        });
+
+        // 7. THE "FOUL (OPPONENT POTTED)" BUTTON FUNCTION
+        document.getElementById("btn-foul-pot").addEventListener("click", function() {
+            if (isGameOver) return;
+            takeStateSnapshot();
+            const foulingPlayer = currentPlayer;
+
+            recordShotData("Foul: Opponent Potted");
+
+            currentPlayer = (currentPlayer === p1Select.value) ? p2Select.value : p1Select.value;
+            visitsLeft = 2;
+
+            playerDisplay.textContent = currentPlayer;
+            visitsDisplay.textContent = visitsLeft;
+
+            gameLog.innerHTML += `<p style="color: red; margin: 5px 0; font-weight: bold;">⚠️ Foul by ${foulingPlayer} (Opponent ball potted!). ${currentPlayer} has 2 visits.</p>`;
+            saveAppStateToCache();
+        });
+
+        // 8. THE "POT BLACK" BUTTON FUNCTION
+        document.getElementById("btn-black").addEventListener("click", function() {
+            if (isGameOver) return;
+            takeStateSnapshot();
+
+            // Set final row to "Win" for active player
+            recordShotData("Game Winning Pot", "Win");
+
+            isGameOver = true;
+            gameLog.innerHTML += `<p style="font-weight: bold; color: black; margin: 5px 0;">🏆 Black ball potted! Game Over.</p>`;
+            saveAppStateToCache();
+            
+            uploadMatchToCloud();
+            
+            alert(`Match Over! ${currentPlayer} wins the game!`);
+        });
+
+        // 9. THE "UNDO" BUTTON LOGIC
+        document.getElementById("btn-undo").addEventListener("click", function() {
+            if (shotLog.length === 0 || previousStates.length === 0) {
+                gameLog.innerHTML += `<p style="color: #6c757d; margin: 5px 0;"><em>Nothing to undo.</em></p>`;
+                return;
+            }
+
+            // Pop the last shot row out of the dataset log
+            shotLog.pop();
+
+            // Restore previous match state variables from history stack
+            let previousState = previousStates.pop();
+            currentPlayer = previousState.currentPlayer;
+            visitsLeft = previousState.visitsLeft;
+            isGameOver = previousState.isGameOver;
+            shotNumber = previousState.shotNumber;
+
+            // Refresh HTML layout counters
+            playerDisplay.textContent = currentPlayer;
+            visitsDisplay.textContent = visitsLeft;
+            dataPreview.textContent = JSON.stringify(shotLog, null, 2);
+            
+            gameLog.innerHTML += `<p style="color: #6c757d; margin: 5px 0; font-weight: bold;">↩ Last action undone.</p>`;
+            
+            saveAppStateToCache();
+            gameLog.scrollTop = gameLog.scrollHeight;
+        });
+
+        // 10. THE "NEW GAME" RESET FUNCTION
+        document.getElementById("btn-reset").addEventListener("click", function() {
+            currentPlayer = p1Select.value;
+            visitsLeft = 1;
+            isGameOver = false;
+            shotNumber = 1;
+            shotLog = []; 
+            currentMatchId = "";
+            previousStates = [];
+
+            localStorage.removeItem("active_pool_match_state"); // Clear cache recovery tracker
+
+            playerDisplay.textContent = currentPlayer;
+            visitsDisplay.textContent = visitsLeft;
+            dataPreview.textContent = "[]";
+            gameLog.innerHTML = `<p style="margin: 5px 0; color: #777;"><em>A fresh game has started. Awaiting first shot...</em></p>`;
+        });
+
+        // TRIGGER RECOVERY SYSTEM UPON LOADING PAGE
+        window.onload = function() {
+            loadAppStateFromCache();
+        };
+    </script>
+
+</body>
+</html>
