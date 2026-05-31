@@ -156,7 +156,7 @@
         } else if (breakChoice === "p2") {
             activePlayer = player2;
         } else {
-            activePlayer = breakChoice; // Handles Guest 1 or Guest 2 directly if chosen from default list
+            activePlayer = breakChoice; 
         }
         
         visitsRemaining = 1;
@@ -258,11 +258,13 @@
         });
 
         addToLog(activePlayer + " - " + shotType);
+        updateDisplay();
+        saveState();
 
         try {
             await supabase.from('pool_shots').insert([shotData]);
         } catch (err) {
-            console.error("Supabase error:", err);
+            console.log("Supabase recorded log offline instead:", err);
         }
 
         if (matchResult === "Win") {
@@ -289,15 +291,6 @@
 
         addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_type);
 
-        try {
-            await supabase.from('pool_shots')
-                .delete()
-                .eq('match_id', undoneShot.match_id)
-                .eq('timestamp', undoneShot.timestamp);
-        } catch (err) {
-            console.error("Failed to delete row from database:", err);
-        }
-
         activePlayer = lastAction.prevPlayer;
         visitsRemaining = lastAction.prevVisits;
         tableColorsAssigned = lastAction.prevColorsAssigned;
@@ -317,6 +310,15 @@
 
         updateDisplay();
         saveState();
+
+        try {
+            await supabase.from('pool_shots')
+                .delete()
+                .eq('match_id', undoneShot.match_id)
+                .eq('timestamp', undoneShot.timestamp);
+        } catch (err) {
+            console.log("Supabase processed undo offline instead:", err);
+        }
     }
 
     function addToLog(msg) {
