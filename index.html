@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,7 +58,8 @@
             <span class="color-indicator" id="p2-color-dot"></span>
         </div>
     </div>
-<div class="section-box" id="setup-section">
+
+    <div class="section-box" id="setup-section">
         <div class="section-title">Match Setup</div>
         <div class="grid-2" style="margin-bottom: 6px;">
             <select id="p1-select" onchange="updatePlayerNames()">
@@ -75,12 +75,6 @@
                 <option value="Guest 2">Guest 2</option>
             </select>
         </div>
-        <select id="break-select" onchange="setStartingPlayer()">
-            <option value="">-- Who is breaking? --</option>
-            <option value="p1">Ginge</option>
-            <option value="p2">Schmidty</option>
-        </select>
-    </div>
         <select id="break-select" onchange="setStartingPlayer()">
             <option value="">-- Who is breaking? --</option>
             <option value="p1">Ginge</option>
@@ -144,7 +138,9 @@
         
         const breakSelect = document.getElementById('break-select');
         breakSelect.options[1].text = player1;
+        breakSelect.options[1].value = "p1";
         breakSelect.options[2].text = player2;
+        breakSelect.options[2].value = "p2";
     }
 
     function setStartingPlayer() {
@@ -383,5 +379,3 @@
 
 </body>
 </html>
-
-```
