@@ -6,36 +6,35 @@
     <title>Pool Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #eef2f3; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
         .container { width: 100%; max-width: 450px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-        h2 { text-align: center; margin: 0 0 10px 0; font-size: 20px; color: #333; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        h2 { text-align: center; margin: 0 0 10px 0; font-size: 20px; color: #333; }
         .scoreboard { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: center; }
         .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-size: 16px; font-weight: 600; border-bottom: 1px solid #edf2f7; }
         .score-row:last-child { border-bottom: none; }
         .color-indicator { width: 14px; height: 14px; border-radius: 50%; display: inline-block; visibility: hidden; border: 1px solid rgba(0,0,0,0.2); }
         .color-red { background-color: #ff3b30; visibility: visible; }
         .color-yellow { background-color: #ffcc00; visibility: visible; }
-        .turn-indicator { font-size: 14px; color: #4a5568; margin-bottom: 4px; font-weight: normal; }
+        .turn-indicator { font-size: 14px; color: #4a5568; margin-bottom: 4px; }
         .visits-indicator { font-size: 15px; font-weight: bold; color: #1a202c; }
         .section-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: #fff; }
         .section-title { font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 15px; background-color: #fff; }
         .color-assign-box { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: center; }
-        .color-assign-title { font-size: 15px; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .color-assign-title { font-size: 15px; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; }
         .color-btn-group { display: flex; gap: 10px; }
-        .color-assign-btn { flex: 1; padding: 12px; border: none; border-radius: 20px; font-weight: bold; font-size: 14px; text-transform: uppercase; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .color-assign-btn { flex: 1; padding: 12px; border: none; border-radius: 20px; font-weight: bold; font-size: 14px; text-transform: uppercase; color: white; }
         .btn-claim-red { background-color: #ff3b30; }
         .btn-claim-yellow { background-color: #ffcc00; color: #1e293b; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        button { width: 100%; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; transition: background 0.1s; }
-        button:active { transform: scale(0.98); }
+        button { width: 100%; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
         .btn-pot { background-color: #34c759; }
         .btn-miss { background-color: #ff3b30; }
-        .btn-foul { background-color: #e2e2e2; color: #333333; font-weight: 600; margin-bottom: 6px; border: 1px solid #cbd5e1; }
+        .btn-foul { background-color: #e2e2e2; color: #333; font-weight: 600; margin-bottom: 6px; border: 1px solid #cbd5e1; }
         .btn-win { background-color: #8e8e93; font-weight: 700; margin-bottom: 10px; }
-        .log-box { width: 100%; height: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 13px; background: #f8f9fa; overflow-y: auto; color: #475569; margin-top: 4px; }
-        .footer-actions { display: flex; gap: 10px; margin-top: 4px; }
+        .log-box { width: 100%; height: 75px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 13px; background: #f8f9fa; overflow-y: auto; color: #475569; }
+        .footer-actions { display: flex; gap: 10px; margin-top: 10px; }
         .btn-undo { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
         .btn-new { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
     </style>
@@ -43,7 +42,7 @@
 <body>
 
 <div class="container">
-    <h2>🎱 Pool Tracker</h2>
+    <h2>Pool Tracker</h2>
     
     <div class="scoreboard">
         <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
@@ -77,8 +76,8 @@
         </div>
         <select id="break-select" onchange="setStartingPlayer()">
             <option value="">-- Who is breaking? --</option>
-            <option value="p1">Ginge</option>
-            <option value="p2">Schmidty</option>
+            <option value="Ginge">Ginge</option>
+            <option value="Schmidty">Schmidty</option>
             <option value="Guest 1">Guest 1</option>
             <option value="Guest 2">Guest 2</option>
         </select>
@@ -94,7 +93,7 @@
 
     <div class="section-box">
         <div class="section-title">Game Log</div>
-        <div class="log-box" id="log-box">Match initialized. Select who breaks to begin tracking.</div>
+        <div class="log-box" id="log-box">Select who breaks to begin tracking.</div>
     </div>
 
     <div id="controls-section">
@@ -105,7 +104,7 @@
         </div>
         
         <button class="btn-foul" onclick="logShot('Foul - Potted White')">Foul (Potted White)</button>
-        <button class="btn-foul" onclick="logShot('Foul - No Hit/Wrong Ball')">Foul (No Hit/Wrong Ball)</button>
+        <button class="btn-foul" onclick="logShot('Foul - No Hit')">Foul (No Hit/Wrong Ball)</button>
         <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul (Opponent Potted)</button>
         
         <button class="btn-win" onclick="logShot('Pot Black (Win Game)')">Pot Black (Win Game)</button>
@@ -128,7 +127,6 @@
     let activePlayer = "";
     let visitsRemaining = 1;
     let shotHistory = [];
-    
     let tableColorsAssigned = false;
     let playerColors = {}; 
 
@@ -138,32 +136,22 @@
         document.getElementById('p1-name-display').innerText = player1;
         document.getElementById('p2-name-display').innerText = player2;
         
-        const breakSelect = document.getElementById('break-select');
-        breakSelect.options[1].text = player1;
-        breakSelect.options[1].value = "p1";
-        breakSelect.options[2].text = player2;
-        breakSelect.options[2].value = "p2";
+        const bSelect = document.getElementById('break-select');
+        bSelect.options[1].text = player1;  bSelect.options[1].value = player1;
+        bSelect.options[2].text = player2;  bSelect.options[2].value = player2;
     }
 
     function setStartingPlayer() {
-        const breakChoice = document.getElementById('break-select').value;
-        if (!breakChoice) return;
+        const selectedBreaker = document.getElementById('break-select').value;
+        if (!selectedBreaker) return;
 
         matchId = "match_" + Date.now();
-        
-        if (breakChoice === "p1") {
-            activePlayer = player1;
-        } else if (breakChoice === "p2") {
-            activePlayer = player2;
-        } else {
-            activePlayer = breakChoice; 
-        }
-        
+        activePlayer = selectedBreaker;
         visitsRemaining = 1;
         shotHistory = [];
         tableColorsAssigned = false;
         playerColors = {};
-        
+
         document.getElementById('p1-color-dot').className = "color-indicator";
         document.getElementById('p2-color-dot').className = "color-indicator";
         document.getElementById('setup-section').style.display = "none";
@@ -184,30 +172,25 @@
         playerColors[activePlayer] = chosenColor;
         playerColors[opponent] = alternativeColor;
 
-        const p1Color = playerColors[player1] || "Open Table";
-        const p2Color = playerColors[player2] || "Open Table";
-        
-        if (p1Color !== "Open Table") document.getElementById('p1-color-dot').className = "color-indicator color-" + p1Color.toLowerCase();
-        if (p2Color !== "Open Table") document.getElementById('p2-color-dot').className = "color-indicator color-" + p2Color.toLowerCase();
+        if (playerColors[player1]) document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
+        if (playerColors[player2]) document.getElementById('p2-color-dot').className = "color-indicator color-" + playerColors[player2].toLowerCase();
 
         document.getElementById('color-assignment-ui').style.display = "none";
-        
-        addToLog(activePlayer + " claimed " + chosenColor + "s. " + opponent + " is on " + alternativeColor + "s.");
+        addToLog(activePlayer + " claimed " + chosenColor + "s. " + opponent + " has " + alternativeColor + "s.");
         updateDisplay();
         saveState();
     }
 
     function updateDisplay() {
-        if (!activePlayer) return;
-        let colorSuffix = " (Open Table)";
-        if (tableColorsAssigned && playerColors && playerColors[activePlayer]) {
-            colorSuffix = " (" + playerColors[activePlayer] + "s)";
+        let suffix = " (Open Table)";
+        if (tableColorsAssigned && playerColors[activePlayer]) {
+            suffix = " (" + playerColors[activePlayer] + "s)";
         }
-        document.getElementById('turn-display').innerText = "Turn: " + activePlayer + colorSuffix;
+        document.getElementById('turn-display').innerText = "Turn: " + activePlayer + suffix;
         document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
     }
 
-    async function logShot(shotType) {
+    function logShot(shotType) {
         if (!activePlayer) {
             activePlayer = player1;
             matchId = "match_" + Date.now();
@@ -235,14 +218,12 @@
             nextVisits = 2;
         }
 
-        const currentColor = (playerColors && playerColors[activePlayer]) ? playerColors[activePlayer] : "Open Table";
-
         const shotData = {
             match_id: matchId,
             player_1: player1,
             player_2: player2,
             active_player: activePlayer,
-            active_player_color: currentColor,
+            active_player_color: playerColors[activePlayer] || "Open Table",
             shot_type: shotType,
             visits_remaining_before: visitsRemaining,
             match_result: matchResult,
@@ -254,7 +235,7 @@
             prevPlayer: activePlayer,
             prevVisits: visitsRemaining,
             prevColorsAssigned: tableColorsAssigned,
-            prevPlayerColors: JSON.stringify(playerColors || {})
+            prevPlayerColors: JSON.stringify(playerColors)
         });
 
         addToLog(activePlayer + " - " + shotType);
@@ -263,6 +244,7 @@
             addToLog("🏆 " + activePlayer + " wins the game!");
             activePlayer = "";
             localStorage.removeItem("pool_tracker_state");
+            sendToSupabase(shotData);
             return;
         }
 
@@ -270,15 +252,18 @@
         visitsRemaining = nextVisits;
         updateDisplay();
         saveState();
+        sendToSupabase(shotData);
+    }
 
+    async function sendToSupabase(data) {
         try {
-            await supabase.from('pool_shots').insert([shotData]);
+            await supabase.from('pool_shots').insert([data]);
         } catch (err) {
-            console.log("Supabase log handled offline:", err);
+            console.log("Supabase handling sync background tasks.", err);
         }
     }
 
-    async function undoLastShot() {
+    function undoLastShot() {
         if (shotHistory.length === 0) {
             alert("No shots left to undo.");
             return;
@@ -300,22 +285,20 @@
             document.getElementById('p2-color-dot').className = "color-indicator";
         } else {
             document.getElementById('color-assignment-ui').style.display = "none";
-            const p1Color = playerColors[player1] || "";
-            const p2Color = playerColors[player2] || "";
-            if (p1Color) document.getElementById('p1-color-dot').className = "color-indicator color-" + p1Color.toLowerCase();
-            if (p2Color) document.getElementById('p2-color-dot').className = "color-indicator color-" + p2Color.toLowerCase();
+            if (playerColors[player1]) document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
+            if (playerColors[player2]) document.getElementById('p2-color-dot').className = "color-indicator color-" + playerColors[player2].toLowerCase();
         }
 
         updateDisplay();
         saveState();
+        removeFromSupabase(undoneShot);
+    }
 
+    async function removeFromSupabase(shot) {
         try {
-            await supabase.from('pool_shots')
-                .delete()
-                .eq('match_id', undoneShot.match_id)
-                .eq('timestamp', undoneShot.timestamp);
-        } catch (err) {
-            console.log("Supabase undo processed offline:", err);
+            await supabase.from('pool_shots').delete().eq('match_id', shot.match_id).eq('timestamp', shot.timestamp);
+        } catch (e) {
+            console.log("Supabase handling delete background tasks.", e);
         }
     }
 
@@ -341,13 +324,9 @@
         if (!raw) return;
         try {
             const state = JSON.parse(raw);
-            matchId = state.matchId;
-            player1 = state.player1;
-            player2 = state.player2;
-            activePlayer = state.activePlayer;
-            visitsRemaining = state.visitsRemaining;
-            shotHistory = state.shotHistory;
-            tableColorsAssigned = state.tableColorsAssigned;
+            matchId = state.matchId; player1 = state.player1; player2 = state.player2;
+            activePlayer = state.activePlayer; visitsRemaining = state.visitsRemaining;
+            shotHistory = state.shotHistory; tableColorsAssigned = state.tableColorsAssigned;
             playerColors = state.playerColors || {};
 
             document.getElementById('p1-select').value = player1;
@@ -355,7 +334,7 @@
             document.getElementById('p1-name-display').innerText = player1;
             document.getElementById('p2-name-display').innerText = player2;
 
-            if (tableColorsAssigned && playerColors && playerColors[player1]) {
+            if (tableColorsAssigned && playerColors[player1]) {
                 document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
                 document.getElementById('p2-color-dot').className = "color-indicator color-" + playerColors[player2].toLowerCase();
             }
@@ -363,16 +342,14 @@
             document.getElementById('log-box').innerHTML = state.logHTML;
             document.getElementById('setup-section').style.display = state.setupVisible;
             document.getElementById('color-assignment-ui').style.display = state.colorVisible;
-
             updateDisplay();
-            document.getElementById('log-box').scrollTop = document.getElementById('log-box').scrollHeight;
         } catch (e) {
-            console.error("Error parsing local recovery state", e);
+            console.error(e);
         }
     }
 
     function resetContainer() {
-        if(confirm("Start a clean frame? This clears temporary screen tracking logs.")) {
+        if(confirm("Start a clean frame?")) {
             localStorage.removeItem("pool_tracker_state");
             location.reload();
         }
