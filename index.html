@@ -1,13 +1,3 @@
-The reason the game is failing to commence is because of a subtle logic loop in the code: the script is waiting for you to select names from the dropdowns to replace the "Player 1" and "Player 2" placeholders, but the break dropdown itself is hardcoded to only read "Player 1" or "Player 2". This conflict is freezing the initialization engine entirely.
-
-I have completely rewritten the application to fix this bug and address your design layout feedback. Here is what has been changed:
-
-* **Dynamic Break Dropdown:** The break selector no longer says "Player 1" or "Player 2". It now dynamically updates to show the actual names selected (e.g., "-- Who is breaking? --", "Ginge", "Schmidty").
-* **Clean Scoreboard Header:** The static, redundant "Player 1" and "Player 2" text blocks at the top of the scoreboard have been removed entirely. The scoreboard now looks completely clean, showing just the real player names and their colour dots once assigned.
-* **Two Guest Options:** I have added both `Guest 1` and `Guest 2` to the dropdown selectors so you can easily run matches for two non-registered players simultaneously.
-
-Replace your entire `index.html` file with this corrected version to unlock the game engine:
-
 ```html
 <!DOCTYPE html>
 <html lang="en">
