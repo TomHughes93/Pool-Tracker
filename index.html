@@ -17,6 +17,16 @@
         .color-yellow { background-color: #ffcc00; visibility: visible; }
         .turn-indicator { font-size: 14px; color: #4a5568; margin-bottom: 4px; }
         .visits-indicator { font-size: 15px; font-weight: bold; color: #1a202c; }
+        
+        /* Table visual rack style */
+        .ball-rack-container { background: #1e293b; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+        .ball-rack-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .ball-rack-row { display: flex; justify-content: center; gap: 8px; min-height: 24px; align-items: center; }
+        .rack-ball { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.4); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2); transition: opacity 0.2s, transform 0.2s; }
+        .rack-ball.potted { opacity: 0.15; transform: scale(0.85); box-shadow: none; border: 1px dashed rgba(255,255,255,0.2); }
+        .rack-red { background: radial-gradient(circle at 7px 7px, #ff6b6b, #cc0000); }
+        .rack-yellow { background: radial-gradient(circle at 7px 7px, #ffeb3b, #c5a000); }
+
         .section-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: #fff; }
         .section-title { font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 15px; background-color: #fff; }
@@ -57,6 +67,12 @@
         </div>
     </div>
 
+    <div class="ball-rack-container" id="visual-rack" style="display: none;">
+        <div class="ball-rack-title" id="rack-title">Remaining Table Balls</div>
+        <div class="ball-rack-row" id="ball-row">
+            </div>
+    </div>
+
     <div class="section-box" id="setup-section">
         <div class="section-title">Match Setup</div>
         <div class="grid-2" style="margin-bottom: 6px;">
@@ -75,10 +91,8 @@
         </div>
         <select id="break-select" onchange="setStartingPlayer()">
             <option value="">-- Who is breaking? --</option>
-            <option value="Ginge">Ginge</option>
-            <option value="Schmidty">Schmidty</option>
-            <option value="Guest 1">Guest 1</option>
-            <option value="Guest 2">Guest 2</option>
+            <option value="p1">Ginge</option>
+            <option value="p2">Schmidty</option>
         </select>
     </div>
 
@@ -129,6 +143,10 @@
     let playerColors = {}; 
     let shotCounter = 1;
 
+    // Remaining count configuration for the visual rack bar tracking
+    let redsRemaining = 7;
+    let yellowsRemaining = 7;
+
     function updatePlayerNames() {
         player1 = document.getElementById('p1-select').value;
         player2 = document.getElementById('p2-select').value;
@@ -136,21 +154,24 @@
         document.getElementById('p2-name-display').innerText = player2;
         
         const bSelect = document.getElementById('break-select');
-        bSelect.options[1].text = player1;  bSelect.options[1].value = player1;
-        bSelect.options[2].text = player2;  bSelect.options[2].value = player2;
+        bSelect.options[1].text = player1;  bSelect.options[1].value = "p1";
+        bSelect.options[2].text = player2;  bSelect.options[2].value = "p2";
     }
 
     function setStartingPlayer() {
-        const selectedBreaker = document.getElementById('break-select').value;
-        if (!selectedBreaker) return;
+        const breakChoice = document.getElementById('break-select').value;
+        if (!breakChoice) return;
 
         matchId = String(Date.now());
-        activePlayer = selectedBreaker;
+        activePlayer = (breakChoice === "p1") ? player1 : player2;
         visitsRemaining = 1;
         shotCounter = 1;
         shotHistory = [];
         tableColorsAssigned = false;
         playerColors = {};
+        
+        redsRemaining = 7;
+        yellowsRemaining = 7;
 
         document.getElementById('p1-color-dot').className = "color-indicator";
         document.getElementById('p2-color-dot').className = "color-indicator";
@@ -159,11 +180,47 @@
         document.getElementById('controls-section').style.pointerEvents = "auto";
         document.getElementById('controls-section').style.opacity = "1";
         
+        document.getElementById('visual-rack').style.display = "block";
+        renderBallRack();
+
         document.getElementById('turn-display').innerText = "Turn: " + activePlayer + " (Open Table)";
         document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
         
         addToLog("Match started. " + activePlayer + " is breaking.");
         saveState();
+    }
+
+    function renderBallRack() {
+        const row = document.getElementById('ball-row');
+        row.innerHTML = "";
+        
+        // Render Red Balls remaining
+        for (let i = 0; i < 7; i++) {
+            const ball = document.createElement('div');
+            ball.className = "rack-ball rack-red" + (i >= redsRemaining ? " potted" : "");
+            row.appendChild(ball);
+        }
+        
+        // Center spacer bar layout block
+        const spacer = document.createElement('div');
+        spacer.style.width = "2px";
+        spacer.style.height = "20px";
+        spacer.style.background = "rgba(255,255,255,0.15)";
+        row.appendChild(spacer);
+
+        // Render Yellow Balls remaining
+        for (let i = 0; i < 7; i++) {
+            const ball = document.createElement('div');
+            ball.className = "rack-ball rack-yellow" + (i >= yellowsRemaining ? " potted" : "");
+            row.appendChild(ball);
+        }
+
+        // Quick title total layout adjustment
+        if (tableColorsAssigned) {
+            document.getElementById('rack-title').innerText = "Balls Left | Reds: " + redsRemaining + " - Yellows: " + yellowsRemaining;
+        } else {
+            document.getElementById('rack-title').innerText = "Open Table | 7 Reds - 7 Yellows Left";
+        }
     }
 
     function assignTableColors(chosenColor) {
@@ -180,6 +237,7 @@
         document.getElementById('color-assignment-ui').style.display = "none";
         addToLog(activePlayer + " claimed " + chosenColor + "s. " + opponent + " has " + alternativeColor + "s.");
         updateDisplay();
+        renderBallRack();
         saveState();
     }
 
@@ -199,6 +257,13 @@
         let matchResult = "In Progress";
         let nextPlayer = activePlayer;
         let nextVisits = visitsRemaining;
+
+        // Deduct from the visual slider bar if a specific color is claimed and potted
+        if (shotType === 'Pot' && tableColorsAssigned) {
+            const activeColor = playerColors[activePlayer];
+            if (activeColor === "Red" && redsRemaining > 0) redsRemaining--;
+            if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
+        }
 
         if (shotType === 'Pot Black (Win Game)') {
             matchResult = "Win";
@@ -233,17 +298,21 @@
             prevPlayer: activePlayer,
             prevVisits: visitsRemaining,
             prevColorsAssigned: tableColorsAssigned,
-            prevPlayerColors: JSON.stringify(playerColors)
+            prevPlayerColors: JSON.stringify(playerColors),
+            prevReds: redsRemaining + (shotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Red" ? 1 : 0),
+            prevYellows: yellowsRemaining + (shotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0)
         });
 
         addToLog(activePlayer + " - " + shotType);
         shotCounter++;
+        renderBallRack();
 
         if (matchResult === "Win") {
             addToLog("🏆 " + activePlayer + " wins the game!");
             document.getElementById('controls-section').style.pointerEvents = "none";
             document.getElementById('controls-section').style.opacity = "0.5";
             document.getElementById('setup-section').style.display = "block";
+            document.getElementById('visual-rack').style.display = "none";
             activePlayer = "";
             matchId = "";
             shotCounter = 1;
@@ -289,10 +358,13 @@
         visitsRemaining = lastAction.prevVisits;
         tableColorsAssigned = lastAction.prevColorsAssigned;
         playerColors = JSON.parse(lastAction.prevPlayerColors || "{}");
+        redsRemaining = lastAction.prevReds;
+        yellowsRemaining = lastAction.prevYellows;
 
         document.getElementById('controls-section').style.pointerEvents = "auto";
         document.getElementById('controls-section').style.opacity = "1";
         document.getElementById('setup-section').style.display = "none";
+        document.getElementById('visual-rack').style.display = "block";
 
         if (!tableColorsAssigned) {
             document.getElementById('color-assignment-ui').style.display = "block";
@@ -305,6 +377,7 @@
         }
 
         updateDisplay();
+        renderBallRack();
         saveState();
         
         const deleteUrl = _supabaseUrl + "?shot_number=eq." + undoneShot.shot_number + "&active_player=eq." + undoneShot.active_player;
@@ -326,10 +399,11 @@
     function saveState() {
         const state = {
             matchId, player1, player2, activePlayer, visitsRemaining, shotCounter,
-            shotHistory, tableColorsAssigned, playerColors,
+            shotHistory, tableColorsAssigned, playerColors, redsRemaining, yellowsRemaining,
             logHTML: document.getElementById('log-box').innerHTML,
             setupVisible: document.getElementById('setup-section').style.display,
-            colorVisible: document.getElementById('color-assignment-ui').style.display
+            colorVisible: document.getElementById('color-assignment-ui').style.display,
+            rackVisible: document.getElementById('visual-rack').style.display
         };
         localStorage.setItem("pool_tracker_state", JSON.stringify(state));
     }
@@ -345,6 +419,8 @@
             shotHistory = state.shotHistory || [];
             tableColorsAssigned = state.tableColorsAssigned;
             playerColors = state.playerColors || {};
+            redsRemaining = state.redsRemaining !== undefined ? state.redsRemaining : 7;
+            yellowsRemaining = state.yellowsRemaining !== undefined ? state.yellowsRemaining : 7;
 
             document.getElementById('p1-select').value = player1;
             document.getElementById('p2-select').value = player2;
@@ -359,10 +435,12 @@
             document.getElementById('log-box').innerHTML = state.logHTML;
             document.getElementById('setup-section').style.display = state.setupVisible;
             document.getElementById('color-assignment-ui').style.display = state.colorVisible;
+            document.getElementById('visual-rack').style.display = state.rackVisible || "none";
             
             if (activePlayer) {
                 document.getElementById('controls-section').style.pointerEvents = "auto";
                 document.getElementById('controls-section').style.opacity = "1";
+                renderBallRack();
             }
             updateDisplay();
         } catch (e) {
