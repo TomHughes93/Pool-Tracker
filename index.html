@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pool Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #eef2f3; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
@@ -117,9 +116,8 @@
 </div>
 
 <script>
-    const _supabaseUrl = "https://dwpwxywkexjxedkgvgyi.supabase.co";
+    const _supabaseUrl = "https://dwpwxywkexjxedkgvgyi.supabase.co/rest/v1/pool_shots";
     const _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cHd4eXdrZXhqeGVka2d2Z3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODAwNTAsImV4cCI6MjA5NDc1NjA1MH0.hCnLJh87d0LDvnnvPkcdhm2MmdQOpok_QmiBBAw4e2s"; 
-    const supabase = Supabase.createClient(_supabaseUrl, _supabaseKey);
 
     let matchId = "match_" + Date.now();
     let player1 = "Ginge";
@@ -231,6 +229,7 @@
 
         if (matchResult === "Win") {
             addToLog("🏆 " + activePlayer + " wins the game!");
+            activePlayer = "";
             localStorage.removeItem("pool_tracker_state");
             sendToSupabase(shotData);
             return;
@@ -243,12 +242,17 @@
         sendToSupabase(shotData);
     }
 
-    async function sendToSupabase(data) {
-        try {
-            await supabase.from('pool_shots').insert([data]);
-        } catch (err) {
-            console.log("Supabase handling background syncing tasks.", err);
-        }
+    function sendToSupabase(data) {
+        fetch(_supabaseUrl, {
+            method: "POST",
+            headers: {
+                "apikey": _supabaseKey,
+                "Authorization": "Bearer " + _supabaseKey,
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+            },
+            body: JSON.stringify(data)
+        }).catch(err => console.log("Offline sync handled safely."));
     }
 
     function undoLastShot() {
@@ -279,15 +283,15 @@
 
         updateDisplay();
         saveState();
-        removeFromSupabase(undoneShot);
-    }
-
-    async function removeFromSupabase(shot) {
-        try {
-            await supabase.from('pool_shots').delete().eq('match_id', shot.match_id).eq('timestamp', shot.timestamp);
-        } catch (e) {
-            console.log("Supabase handling delete background tasks.", e);
-        }
+        
+        const deleteUrl = _supabaseUrl + "?match_id=eq." + undoneShot.match_id + "&timestamp=eq." + undoneShot.timestamp;
+        fetch(deleteUrl, {
+            method: "DELETE",
+            headers: {
+                "apikey": _supabaseKey,
+                "Authorization": "Bearer " + _supabaseKey
+            }
+        }).catch(e => console.log("Offline delete handled safely."));
     }
 
     function addToLog(msg) {
