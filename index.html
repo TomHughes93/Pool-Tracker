@@ -1,3 +1,8 @@
+Here is the complete, clean code file for your `index.html`. It has your correct live Supabase database key fully integrated, includes both `Guest 1` and `Guest 2` options, and features the clean scoreboard design without any duplicate placeholder text blocking the screen.
+
+Completely replace everything inside your GitHub file with this block:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,4 +41,350 @@
         .btn-win { background-color: #8e8e93; font-weight: 700; margin-bottom: 10px; }
         .log-box { width: 100%; height: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 13px; background: #f8f9fa; overflow-y: auto; color: #475569; margin-top: 4px; }
         .footer-actions { display: flex; gap: 10px; margin-top: 4px; }
-        .btn-undo { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1
+        .btn-undo { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
+        .btn-new { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎱 Pool Tracker</h2>
+    
+    <div class="scoreboard">
+        <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
+        <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
+        <hr style="border: 0; border-top: 1px solid #e9ecef; margin: 8px 0;">
+        <div class="score-row">
+            <span id="p1-name-display">Ginge</span>
+            <span class="color-indicator" id="p1-color-dot"></span>
+        </div>
+        <div class="score-row">
+            <span id="p2-name-display">Schmidty</span>
+            <span class="color-indicator" id="p2-color-dot"></span>
+        </div>
+    </div>
+
+    <div class="section-box" id="setup-section">
+        <div class="section-title">Match Setup</div>
+        <div class="grid-2" style="margin-bottom: 6px;">
+            <select id="p1-select" onchange="updatePlayerNames()">
+                <option value="Ginge">Ginge</option>
+                <option value="Schmidty">Schmidty</option>
+                <option value="Guest 1">Guest 1</option>
+                <option value="Guest 2">Guest 2</option>
+            </select>
+            <select id="p2-select" onchange="updatePlayerNames()">
+                <option value="Schmidty">Schmidty</option>
+                <option value="Ginge">Ginge</option>
+                <option value="Guest 1">Guest 1</option>
+                <option value="Guest 2">Guest 2</option>
+            </select>
+        </div>
+        <select id="break-select" onchange="setStartingPlayer()">
+            <option value="">-- Who is breaking? --</option>
+            <option value="p1">Ginge</option>
+            <option value="p2">Schmidty</option>
+        </select>
+    </div>
+
+    <div class="color-assign-box" id="color-assignment-ui" style="display: none;">
+        <div class="color-assign-title">Open Table: Assign Colors</div>
+        <div class="color-btn-group">
+            <button class="color-assign-btn btn-claim-red" onclick="assignTableColors('Red')">Claim Reds</button>
+            <button class="color-assign-btn btn-claim-yellow" onclick="assignTableColors('Yellow')">Claim Yellows</button>
+        </div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-title">Game Log</div>
+        <div class="log-box" id="log-box">Match initialized. Select who breaks to begin tracking.</div>
+    </div>
+
+    <div id="controls-section" style="pointer-events: none; opacity: 0.5;">
+        <div class="section-title">Controls</div>
+        <div class="grid-2">
+            <button class="btn-pot" onclick="logShot('Pot')">Ball Potted</button>
+            <button class="btn-miss" onclick="logShot('Miss')">Miss</button>
+        </div>
+        
+        <button class="btn-foul" onclick="logShot('Foul - Potted White')">Foul (Potted White)</button>
+        <button class="btn-foul" onclick="logShot('Foul - No Hit/Wrong Ball')">Foul (No Hit/Wrong Ball)</button>
+        <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul (Opponent Potted)</button>
+        
+        <button class="btn-win" onclick="logShot('Pot Black (Win Game)')">Pot Black (Win Game)</button>
+    </div>
+
+    <div class="footer-actions">
+        <button class="btn-undo" onclick="undoLastShot()"><= Undo Mistake</button>
+        <button class="btn-new" onclick="resetContainer()">New Game</button>
+    </div>
+</div>
+
+<script>
+    const _supabaseUrl = "https://dwpwywkexjxedkgvgyi.supabase.co";
+    const _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cHd4eXdrZXhqeGVka2d2Z3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODAwNTAsImV4cCI6MjA5NDc1NjA1MH0.hCnLJh87d0LDvnnvPkcdhm2MmdQOpok_QmiBBAw4e2s"; 
+    const supabase = Supabase.createClient(_supabaseUrl, _supabaseKey);
+
+    let matchId = "";
+    let player1 = "Ginge";
+    let player2 = "Schmidty";
+    let activePlayer = "";
+    let visitsRemaining = 1;
+    let shotHistory = [];
+    
+    let tableColorsAssigned = false;
+    let playerColors = {}; 
+
+    function updatePlayerNames() {
+        player1 = document.getElementById('p1-select').value;
+        player2 = document.getElementById('p2-select').value;
+        document.getElementById('p1-name-display').innerText = player1;
+        document.getElementById('p2-name-display').innerText = player2;
+        
+        const breakSelect = document.getElementById('break-select');
+        breakSelect.options[1].text = player1;
+        breakSelect.options[1].value = "p1";
+        breakSelect.options[2].text = player2;
+        breakSelect.options[2].value = "p2";
+    }
+
+    function setStartingPlayer() {
+        const breakChoice = document.getElementById('break-select').value;
+        if (!breakChoice) return;
+
+        matchId = "match_" + Date.now();
+        activePlayer = (breakChoice === "p1") ? player1 : player2;
+        visitsRemaining = 1;
+        shotHistory = [];
+        
+        tableColorsAssigned = false;
+        playerColors = {};
+        document.getElementById('p1-color-dot').className = "color-indicator";
+        document.getElementById('p2-color-dot').className = "color-indicator";
+        
+        document.getElementById('setup-section').style.display = "none";
+        document.getElementById('color-assignment-ui').style.display = "block";
+        document.getElementById('controls-section').style.pointerEvents = "auto";
+        document.getElementById('controls-section').style.opacity = "1";
+        
+        updateDisplay();
+        addToLog("Match started. " + activePlayer + " is breaking on an Open Table.");
+        saveState();
+    }
+
+    function assignTableColors(chosenColor) {
+        tableColorsAssigned = true;
+        const opponent = (activePlayer === player1) ? player2 : player1;
+        const alternativeColor = (chosenColor === "Red") ? "Yellow" : "Red";
+
+        playerColors[activePlayer] = chosenColor;
+        playerColors[opponent] = alternativeColor;
+
+        const p1Color = playerColors[player1];
+        const p2Color = playerColors[player2];
+        
+        document.getElementById('p1-color-dot').className = "color-indicator color-" + p1Color.toLowerCase();
+        document.getElementById('p2-color-dot').className = "color-indicator color-" + p2Color.toLowerCase();
+
+        document.getElementById('color-assignment-ui').style.display = "none";
+        
+        addToLog(activePlayer + " claimed " + chosenColor + "s. " + opponent + " is on " + alternativeColor + "s.");
+        updateDisplay();
+        saveState();
+    }
+
+    function updateDisplay() {
+        if (!activePlayer) return;
+        let colorSuffix = "";
+        if (tableColorsAssigned && playerColors[activePlayer]) {
+            colorSuffix = " (" + playerColors[activePlayer] + "s)";
+        }
+        document.getElementById('turn-display').innerText = "Turn: " + activePlayer + colorSuffix;
+        document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
+    }
+
+    async function logShot(shotType) {
+        if (!activePlayer) return;
+
+        const opponent = (activePlayer === player1) ? player2 : player1;
+        let matchResult = "In Progress";
+        let nextPlayer = activePlayer;
+        let nextVisits = visitsRemaining;
+
+        if (shotType === 'Pot Black (Win Game)') {
+            matchResult = "Win";
+            nextVisits = 0;
+        } else if (shotType === 'Pot') {
+            nextVisits = 1; 
+        } else if (shotType === 'Miss') {
+            if (visitsRemaining === 2) {
+                nextVisits = 1;
+            } else {
+                nextPlayer = opponent;
+                nextVisits = 1;
+            }
+        } else if (shotType.startsWith('Foul')) {
+            nextPlayer = opponent;
+            nextVisits = 2;
+        }
+
+        const shotData = {
+            match_id: matchId,
+            player_1: player1,
+            player_2: player2,
+            active_player: activePlayer,
+            active_player_color: playerColors[activePlayer] || "Open Table",
+            shot_type: shotType,
+            visits_remaining_before: visitsRemaining,
+            match_result: matchResult,
+            timestamp: new Date().toISOString()
+        };
+
+        shotHistory.push({
+            shot: shotData,
+            prevPlayer: activePlayer,
+            prevVisits: visitsRemaining,
+            prevColorsAssigned: tableColorsAssigned,
+            prevPlayerColors: JSON.stringify(playerColors)
+        });
+
+        addToLog(activePlayer + " - " + shotType);
+
+        try {
+            await supabase.from('pool_shots').insert([shotData]);
+        } catch (err) {
+            console.error("Supabase error:", err);
+        }
+
+        if (matchResult === "Win") {
+            addToLog("🏆 " + activePlayer + " wins the game!");
+            document.getElementById('controls-section').style.pointerEvents = "none";
+            document.getElementById('controls-section').style.opacity = "0.5";
+            activePlayer = "";
+            localStorage.removeItem("pool_tracker_state");
+            return;
+        }
+
+        activePlayer = nextPlayer;
+        visitsRemaining = nextVisits;
+        updateDisplay();
+        saveState();
+    }
+
+    async function undoLastShot() {
+        if (shotHistory.length === 0) {
+            alert("No shots left to undo.");
+            return;
+        }
+
+        const lastAction = shotHistory.pop();
+        const undoneShot = lastAction.shot;
+
+        addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_type);
+
+        try {
+            await supabase.from('pool_shots')
+                .delete()
+                .eq('match_id', undoneShot.match_id)
+                .eq('timestamp', undoneShot.timestamp);
+        } catch (err) {
+            console.error("Failed to delete row from database:", err);
+        }
+
+        activePlayer = lastAction.prevPlayer;
+        visitsRemaining = lastAction.prevVisits;
+        tableColorsAssigned = lastAction.prevColorsAssigned;
+        playerColors = JSON.parse(lastAction.prevPlayerColors);
+
+        if (!tableColorsAssigned) {
+            document.getElementById('color-assignment-ui').style.display = "block";
+            document.getElementById('p1-color-dot').className = "color-indicator";
+            document.getElementById('p2-color-dot').className = "color-indicator";
+        } else {
+            document.getElementById('color-assignment-ui').style.display = "none";
+            document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
+            document.getElementById('p2-color-dot').className = "color-indicator color-" + playerColors[player2].toLowerCase();
+        }
+
+        document.getElementById('controls-section').style.pointerEvents = "auto";
+        document.getElementById('controls-section').style.opacity = "1";
+
+        updateDisplay();
+        saveState();
+    }
+
+    function addToLog(msg) {
+        const box = document.getElementById('log-box');
+        box.innerHTML += "<div>" + msg + "</div>";
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function saveState() {
+        const state = {
+            matchId, player1, player2, activePlayer, visitsRemaining, 
+            shotHistory, tableColorsAssigned, playerColors,
+            logHTML: document.getElementById('log-box').innerHTML,
+            setupVisible: document.getElementById('setup-section').style.display,
+            colorVisible: document.getElementById('color-assignment-ui').style.display,
+            controlsEnabled: document.getElementById('controls-section').style.pointerEvents,
+            controlsOpacity: document.getElementById('controls-section').style.opacity
+        };
+        localStorage.setItem("pool_tracker_state", JSON.stringify(state));
+    }
+
+    function loadState() {
+        const raw = localStorage.getItem("pool_tracker_state");
+        if (!raw) return;
+        try {
+            const state = JSON.parse(raw);
+            matchId = state.matchId;
+            player1 = state.player1;
+            player2 = state.player2;
+            activePlayer = state.activePlayer;
+            visitsRemaining = state.visitsRemaining;
+            shotHistory = state.shotHistory;
+            tableColorsAssigned = state.tableColorsAssigned;
+            playerColors = state.playerColors;
+
+            document.getElementById('p1-select').value = player1;
+            document.getElementById('p2-select').value = player2;
+            document.getElementById('p1-name-display').innerText = player1;
+            document.getElementById('p2-name-display').innerText = player2;
+
+            if (tableColorsAssigned && playerColors[player1]) {
+                document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
+                document.getElementById('p2-color-dot').className = "color-indicator color-" + playerColors[player2].toLowerCase();
+            }
+
+            document.getElementById('log-box').innerHTML = state.logHTML;
+            document.getElementById('setup-section').style.display = state.setupVisible;
+            document.getElementById('color-assignment-ui').style.display = state.colorVisible;
+            document.getElementById('controls-section').style.pointerEvents = state.controlsEnabled;
+            document.getElementById('controls-section').style.opacity = state.controlsOpacity;
+
+            updateDisplay();
+            document.getElementById('log-box').scrollTop = document.getElementById('log-box').scrollHeight;
+        } catch (e) {
+            console.error("Error parsing local recovery state", e);
+        }
+    }
+
+    function resetContainer() {
+        if(confirm("Start a clean frame? This clears temporary screen tracking logs.")) {
+            localStorage.removeItem("pool_tracker_state");
+            location.reload();
+        }
+    }
+
+    window.onload = function() {
+        updatePlayerNames();
+        loadState();
+    };
+</script>
+
+</body>
+</html>
+
+```
+
+Make sure to delete everything in your GitHub editor before pasting this in so no stray lines are left over. Once committed, wait 30 seconds, open a fresh private browser tab on your phone, and you are ready to start tracking frames.
