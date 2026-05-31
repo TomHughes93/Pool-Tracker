@@ -18,7 +18,6 @@
         .turn-indicator { font-size: 14px; color: #4a5568; margin-bottom: 4px; }
         .visits-indicator { font-size: 15px; font-weight: bold; color: #1a202c; }
         
-        /* Table visual rack style */
         .ball-rack-container { background: #1e293b; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
         .ball-rack-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
         .ball-rack-row { display: flex; justify-content: center; gap: 8px; min-height: 24px; align-items: center; }
@@ -69,8 +68,7 @@
 
     <div class="ball-rack-container" id="visual-rack" style="display: none;">
         <div class="ball-rack-title" id="rack-title">Remaining Table Balls</div>
-        <div class="ball-rack-row" id="ball-row">
-            </div>
+        <div class="ball-rack-row" id="ball-row"></div>
     </div>
 
     <div class="section-box" id="setup-section">
@@ -143,7 +141,6 @@
     let playerColors = {}; 
     let shotCounter = 1;
 
-    // Remaining count configuration for the visual rack bar tracking
     let redsRemaining = 7;
     let yellowsRemaining = 7;
 
@@ -194,28 +191,24 @@
         const row = document.getElementById('ball-row');
         row.innerHTML = "";
         
-        // Render Red Balls remaining
         for (let i = 0; i < 7; i++) {
             const ball = document.createElement('div');
             ball.className = "rack-ball rack-red" + (i >= redsRemaining ? " potted" : "");
             row.appendChild(ball);
         }
         
-        // Center spacer bar layout block
         const spacer = document.createElement('div');
         spacer.style.width = "2px";
         spacer.style.height = "20px";
         spacer.style.background = "rgba(255,255,255,0.15)";
         row.appendChild(spacer);
 
-        // Render Yellow Balls remaining
         for (let i = 0; i < 7; i++) {
             const ball = document.createElement('div');
             ball.className = "rack-ball rack-yellow" + (i >= yellowsRemaining ? " potted" : "");
             row.appendChild(ball);
         }
 
-        // Quick title total layout adjustment
         if (tableColorsAssigned) {
             document.getElementById('rack-title').innerText = "Balls Left | Reds: " + redsRemaining + " - Yellows: " + yellowsRemaining;
         } else {
@@ -257,17 +250,30 @@
         let matchResult = "In Progress";
         let nextPlayer = activePlayer;
         let nextVisits = visitsRemaining;
+        let originalShotType = shotType;
 
-        // Deduct from the visual slider bar if a specific color is claimed and potted
         if (shotType === 'Pot' && tableColorsAssigned) {
             const activeColor = playerColors[activePlayer];
             if (activeColor === "Red" && redsRemaining > 0) redsRemaining--;
             if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
         }
 
+        // Validation logic for early black potting rule configuration
         if (shotType === 'Pot Black (Win Game)') {
-            matchResult = "Win";
-            nextVisits = 0;
+            let activeColor = playerColors[activePlayer] || "Open Table";
+            let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
+            
+            if (activeColor === "Open Table" || remainingCount > 0) {
+                // Illegal black pot triggers immediate loss of frame; opponent wins
+                matchResult = "Win"; 
+                nextPlayer = opponent; 
+                shotType = "Loss of Frame - Illegal Early Black Pot";
+                addToLog("❌ Violation: Early black potted. " + activePlayer + " loses the frame.");
+            } else {
+                // Legitimate black pot clears frame for the active player
+                matchResult = "Win";
+                nextVisits = 0;
+            }
         } else if (shotType === 'Pot') {
             nextVisits = 1; 
         } else if (shotType === 'Miss') {
@@ -299,8 +305,8 @@
             prevVisits: visitsRemaining,
             prevColorsAssigned: tableColorsAssigned,
             prevPlayerColors: JSON.stringify(playerColors),
-            prevReds: redsRemaining + (shotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Red" ? 1 : 0),
-            prevYellows: yellowsRemaining + (shotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0)
+            prevReds: redsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Red" ? 1 : 0),
+            prevYellows: yellowsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0)
         });
 
         addToLog(activePlayer + " - " + shotType);
@@ -308,7 +314,8 @@
         renderBallRack();
 
         if (matchResult === "Win") {
-            addToLog("🏆 " + activePlayer + " wins the game!");
+            let winner = (shotType.startsWith("Loss of Frame")) ? opponent : activePlayer;
+            addToLog("🏆 " + winner + " wins the game!");
             document.getElementById('controls-section').style.pointerEvents = "none";
             document.getElementById('controls-section').style.opacity = "0.5";
             document.getElementById('setup-section').style.display = "block";
