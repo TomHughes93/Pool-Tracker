@@ -73,13 +73,6 @@
                 <option value="Guest 2">Guest 2</option>
             </select>
         </div>
-        <select id="break-select" onchange="setStartingPlayer()">
-            <option value="">-- Who is breaking? --</option>
-            <option value="Ginge">Ginge</option>
-            <option value="Schmidty">Schmidty</option>
-            <option value="Guest 1">Guest 1</option>
-            <option value="Guest 2">Guest 2</option>
-        </select>
     </div>
 
     <div class="color-assign-box" id="color-assignment-ui">
@@ -92,7 +85,7 @@
 
     <div class="section-box">
         <div class="section-title">Game Log</div>
-        <div class="log-box" id="log-box">Tracker ready. Press any button to log events.</div>
+        <div class="log-box" id="log-box">Tracker ready. Player 1 automatically starts the break turn.</div>
     </div>
 
     <div id="controls-section">
@@ -119,7 +112,7 @@
     const _supabaseUrl = "https://dwpwxywkexjxedkgvgyi.supabase.co/rest/v1/pool_shots";
     const _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cHd4eXdrZXhqeGVka2d2Z3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODAwNTAsImV4cCI6MjA5NDc1NjA1MH0.hCnLJh87d0LDvnnvPkcdhm2MmdQOpok_QmiBBAw4e2s"; 
 
-    let matchId = "match_" + Date.now();
+    let matchId = "";
     let player1 = "Ginge";
     let player2 = "Schmidty";
     let activePlayer = "Ginge";
@@ -127,6 +120,7 @@
     let shotHistory = [];
     let tableColorsAssigned = false;
     let playerColors = {}; 
+    let shotCounter = 1;
 
     function updatePlayerNames() {
         player1 = document.getElementById('p1-select').value;
@@ -137,23 +131,6 @@
             activePlayer = player1;
             updateDisplay();
         }
-        
-        const bSelect = document.getElementById('break-select');
-        bSelect.options[1].text = player1;  bSelect.options[1].value = player1;
-        bSelect.options[2].text = player2;  bSelect.options[2].value = player2;
-    }
-
-    function setStartingPlayer() {
-        const selectedBreaker = document.getElementById('break-select').value;
-        if (!selectedBreaker) return;
-
-        activePlayer = selectedBreaker;
-        visitsRemaining = 1;
-        document.getElementById('setup-section').style.display = "none";
-        
-        updateDisplay();
-        addToLog("Match started. " + activePlayer + " is breaking.");
-        saveState();
     }
 
     function assignTableColors(chosenColor) {
@@ -183,6 +160,10 @@
     }
 
     function logShot(shotType) {
+        if (!matchId) {
+            matchId = String(Date.now());
+        }
+
         const opponent = (activePlayer === player1) ? player2 : player1;
         let matchResult = "In Progress";
         let nextPlayer = activePlayer;
@@ -205,20 +186,20 @@
             nextVisits = 2;
         }
 
+        // Mapping fields to precisely mirror your Supabase table column constraints
         const shotData = {
-            match_id: matchId,
-            player_1: player1,
-            player_2: player2,
+            shot_number: shotCounter,
+            player_1_home: player1,
+            player_2_away: player2,
             active_player: activePlayer,
-            active_player_color: playerColors[activePlayer] || "Open Table",
-            shot_type: shotType,
-            visits_remaining_before: visitsRemaining,
-            match_result: matchResult,
-            timestamp: new Date().toISOString()
+            shot_result: shotType,
+            visits_at_shot: visitsRemaining
         };
 
         shotHistory.push({
             shot: shotData,
+            matchIdRef: matchId,
+            prevCounter: shotCounter,
             prevPlayer: activePlayer,
             prevVisits: visitsRemaining,
             prevColorsAssigned: tableColorsAssigned,
@@ -226,10 +207,13 @@
         });
 
         addToLog(activePlayer + " - " + shotType);
+        shotCounter++;
 
         if (matchResult === "Win") {
             addToLog("🏆 " + activePlayer + " wins the game!");
-            activePlayer = "";
+            activePlayer = player1;
+            matchId = "";
+            shotCounter = 1;
             localStorage.removeItem("pool_tracker_state");
             sendToSupabase(shotData);
             return;
@@ -252,7 +236,7 @@
                 "Prefer": "return=minimal"
             },
             body: JSON.stringify(data)
-        }).catch(err => console.log("Offline sync handled safely."));
+        }).catch(err => console.log(err));
     }
 
     function undoLastShot() {
@@ -264,8 +248,10 @@
         const lastAction = shotHistory.pop();
         const undoneShot = lastAction.shot;
 
-        addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_type);
+        addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_result);
 
+        matchId = lastAction.matchIdRef;
+        shotCounter = lastAction.prevCounter;
         activePlayer = lastAction.prevPlayer;
         visitsRemaining = lastAction.prevVisits;
         tableColorsAssigned = lastAction.prevColorsAssigned;
@@ -284,14 +270,14 @@
         updateDisplay();
         saveState();
         
-        const deleteUrl = _supabaseUrl + "?match_id=eq." + undoneShot.match_id + "&timestamp=eq." + undoneShot.timestamp;
+        const deleteUrl = _supabaseUrl + "?shot_number=eq." + undoneShot.shot_number + "&active_player=eq." + undoneShot.active_player;
         fetch(deleteUrl, {
             method: "DELETE",
             headers: {
                 "apikey": _supabaseKey,
                 "Authorization": "Bearer " + _supabaseKey
             }
-        }).catch(e => console.log("Offline delete handled safely."));
+        }).catch(e => console.log(e));
     }
 
     function addToLog(msg) {
@@ -302,7 +288,7 @@
 
     function saveState() {
         const state = {
-            matchId, player1, player2, activePlayer, visitsRemaining, 
+            matchId, player1, player2, activePlayer, visitsRemaining, shotCounter,
             shotHistory, tableColorsAssigned, playerColors,
             logHTML: document.getElementById('log-box').innerHTML,
             setupVisible: document.getElementById('setup-section').style.display,
@@ -318,7 +304,9 @@
             const state = JSON.parse(raw);
             matchId = state.matchId; player1 = state.player1; player2 = state.player2;
             activePlayer = state.activePlayer; visitsRemaining = state.visitsRemaining;
-            shotHistory = state.shotHistory; tableColorsAssigned = state.tableColorsAssigned;
+            shotCounter = state.shotCounter || 1;
+            shotHistory = state.shotHistory || [];
+            tableColorsAssigned = state.tableColorsAssigned;
             playerColors = state.playerColors || {};
 
             document.getElementById('p1-select').value = player1;
