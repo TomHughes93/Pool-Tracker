@@ -14,6 +14,7 @@
         .score-row:last-child { border-bottom: none; }
         .player-info { display: flex; align-items: center; gap: 8px; }
         .session-tally { font-size: 14px; color: #64748b; font-weight: bold; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; }
+        .foul-tally { font-size: 13px; color: #ffffff; font-weight: bold; background: #ff9500; padding: 2px 6px; border-radius: 4px; }
         .color-indicator { width: 14px; height: 14px; border-radius: 50%; display: inline-block; visibility: hidden; border: 1px solid rgba(0,0,0,0.2); }
         .color-red { background-color: #ff3b30; visibility: visible; }
         .color-yellow { background-color: #ffcc00; visibility: visible; }
@@ -62,6 +63,7 @@
             <div class="player-info">
                 <span id="p1-name-display">Ginge</span>
                 <span class="session-tally" id="p1-tally">0W - 0L</span>
+                <span class="foul-tally" id="p1-fouls" style="display: none;">0 Fouls</span>
             </div>
             <span class="color-indicator" id="p1-color-dot"></span>
         </div>
@@ -69,6 +71,7 @@
             <div class="player-info">
                 <span id="p2-name-display">Schmidty</span>
                 <span class="session-tally" id="p2-tally">0W - 0L</span>
+                <span class="foul-tally" id="p2-fouls" style="display: none;">0 Fouls</span>
             </div>
             <span class="color-indicator" id="p2-color-dot"></span>
         </div>
@@ -154,6 +157,10 @@
     let yellowsRemaining = 7;
     let sessionScores = {};
 
+    // Live frame foul counters configuration
+    let p1Fouls = 0;
+    let p2Fouls = 0;
+
     function updatePlayerNames() {
         player1 = document.getElementById('p1-select').value;
         player2 = document.getElementById('p2-select').value;
@@ -211,6 +218,8 @@
         
         redsRemaining = 7;
         yellowsRemaining = 7;
+        p1Fouls = 0;
+        p2Fouls = 0;
 
         document.getElementById('p1-color-dot').className = "color-indicator";
         document.getElementById('p2-color-dot').className = "color-indicator";
@@ -219,6 +228,10 @@
         document.getElementById('controls-section').style.pointerEvents = "auto";
         document.getElementById('controls-section').style.opacity = "1";
         
+        document.getElementById('p1-fouls').style.display = "inline-block";
+        document.getElementById('p2-fouls').style.display = "inline-block";
+        updateFoulDisplay();
+
         document.getElementById('visual-rack').style.display = "block";
         renderBallRack();
 
@@ -227,6 +240,11 @@
         
         addToLog("Match started. " + activePlayer + " is breaking.");
         saveState();
+    }
+
+    function updateFoulDisplay() {
+        document.getElementById('p1-fouls').innerText = p1Fouls + " Foul" + (p1Fouls !== 1 ? "s" : "");
+        document.getElementById('p2-fouls').innerText = p2Fouls + " Foul" + (p2Fouls !== 1 ? "s" : "");
     }
 
     function renderBallRack() {
@@ -323,11 +341,14 @@
                 nextVisits = 1;
             }
         } else if (shotType.startsWith('Foul')) {
+            // Increment the specific active player's foul count total row
+            if (activePlayer === player1) p1Fouls++; else p2Fouls++;
+            updateFoulDisplay();
+            
             nextPlayer = opponent;
             nextVisits = 2;
         }
 
-        // Aligning precise data mappings with your live Supabase database columns
         const shotData = {
             shot_number: shotCounter,
             player_1_home: player1,
@@ -352,7 +373,9 @@
             prevReds: redsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Red" ? 1 : 0),
             prevYellows: yellowsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0),
             recordedWinner: frameWinner,
-            recordedLoser: frameLoser
+            recordedLoser: frameLoser,
+            prevP1Fouls: p1Fouls - (originalShotType.startsWith('Foul') && activePlayer === player1 ? 1 : 0),
+            prevP2Fouls: p2Fouls - (originalShotType.startsWith('Foul') && activePlayer === player2 ? 1 : 0)
         });
 
         addToLog(activePlayer + " - " + shotType);
@@ -367,11 +390,17 @@
             document.getElementById('controls-section').style.opacity = "0.5";
             document.getElementById('setup-section').style.display = "block";
             document.getElementById('visual-rack').style.display = "none";
+            document.getElementById('p1-fouls').style.display = "none";
+            document.getElementById('p2-fouls').style.display = "none";
+            
+            shotData.shot_result = "Match Finished - Winner: " + frameWinner + " | Loser: " + frameLoser;
             
             activePlayer = "";
             matchId = "";
             breakerPlayer = "";
             shotCounter = 1;
+            p1Fouls = 0;
+            p2Fouls = 0;
             localStorage.removeItem("pool_tracker_state");
             sendToSupabase(shotData);
             return;
@@ -425,8 +454,9 @@
         playerColors = JSON.parse(lastAction.prevPlayerColors || "{}");
         redsRemaining = lastAction.prevReds;
         yellowsRemaining = lastAction.prevYellows;
+        p1Fouls = lastAction.prevP1Fouls;
+        p2Fouls = lastAction.prevP2Fouls;
 
-        // Restore breaker extraction context from custom dataset string column
         if (undoneShot.dataset_type && undoneShot.dataset_type.startsWith("Breaker: ")) {
             breakerPlayer = undoneShot.dataset_type.replace("Breaker: ", "");
         }
@@ -435,6 +465,10 @@
         document.getElementById('controls-section').style.opacity = "1";
         document.getElementById('setup-section').style.display = "none";
         document.getElementById('visual-rack').style.display = "block";
+        document.getElementById('p1-fouls').style.display = "inline-block";
+        document.getElementById('p2-fouls').style.display = "inline-block";
+        
+        updateFoulDisplay();
 
         if (!tableColorsAssigned) {
             document.getElementById('color-assignment-ui').style.display = "block";
@@ -469,7 +503,7 @@
     function saveState() {
         const state = {
             matchId, player1, player2, activePlayer, breakerPlayer, visitsRemaining, shotCounter,
-            shotHistory, tableColorsAssigned, playerColors, redsRemaining, yellowsRemaining,
+            shotHistory, tableColorsAssigned, playerColors, redsRemaining, yellowsRemaining, p1Fouls, p2Fouls,
             logHTML: document.getElementById('log-box').innerHTML,
             setupVisible: document.getElementById('setup-section').style.display,
             colorVisible: document.getElementById('color-assignment-ui').style.display,
@@ -492,6 +526,8 @@
             playerColors = state.playerColors || {};
             redsRemaining = state.redsRemaining !== undefined ? state.redsRemaining : 7;
             yellowsRemaining = state.yellowsRemaining !== undefined ? state.yellowsRemaining : 7;
+            p1Fouls = state.p1Fouls || 0;
+            p2Fouls = state.p2Fouls || 0;
 
             document.getElementById('p1-select').value = player1;
             document.getElementById('p2-select').value = player2;
@@ -511,6 +547,9 @@
             if (activePlayer) {
                 document.getElementById('controls-section').style.pointerEvents = "auto";
                 document.getElementById('controls-section').style.opacity = "1";
+                document.getElementById('p1-fouls').style.display = "inline-block";
+                document.getElementById('p2-fouls').style.display = "inline-block";
+                updateFoulDisplay();
                 renderBallRack();
             }
             updateDisplay();
