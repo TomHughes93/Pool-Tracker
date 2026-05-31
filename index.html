@@ -143,6 +143,7 @@
     let player1 = "Ginge";
     let player2 = "Schmidty";
     let activePlayer = "";
+    let breakerPlayer = "";
     let visitsRemaining = 1;
     let shotHistory = [];
     let tableColorsAssigned = false;
@@ -151,8 +152,6 @@
 
     let redsRemaining = 7;
     let yellowsRemaining = 7;
-
-    // Local score memory storage configuration
     let sessionScores = {};
 
     function updatePlayerNames() {
@@ -171,8 +170,6 @@
     function checkSessionExpiry() {
         const lastSavedTime = localStorage.getItem("pool_session_timestamp");
         const currentTime = Date.now();
-        
-        // 14 hours verification threshold limit (14 * 60 * 60 * 1000)
         if (lastSavedTime && (currentTime - parseInt(lastSavedTime) > 50400000)) {
             localStorage.removeItem("pool_session_scores");
             sessionScores = {};
@@ -185,10 +182,8 @@
     function recordSessionWin(winnerName, loserName) {
         if (!sessionScores[winnerName]) sessionScores[winnerName] = { wins: 0, losses: 0 };
         if (!sessionScores[loserName]) sessionScores[loserName] = { wins: 0, losses: 0 };
-        
         sessionScores[winnerName].wins++;
         sessionScores[loserName].losses++;
-        
         localStorage.setItem("pool_session_scores", JSON.stringify(sessionScores));
         localStorage.setItem("pool_session_timestamp", Date.now().toString());
         renderTallies();
@@ -197,7 +192,6 @@
     function renderTallies() {
         const p1Data = sessionScores[player1] || { wins: 0, losses: 0 };
         const p2Data = sessionScores[player2] || { wins: 0, losses: 0 };
-        
         document.getElementById('p1-tally').innerText = p1Data.wins + "W - " + p1Data.losses + "L";
         document.getElementById('p2-tally').innerText = p2Data.wins + "W - " + p2Data.losses + "L";
     }
@@ -206,8 +200,9 @@
         const breakChoice = document.getElementById('break-select').value;
         if (!breakChoice) return;
 
-        matchId = String(Date.now());
+        matchId = "match_" + Date.now();
         activePlayer = (breakChoice === "p1") ? player1 : player2;
+        breakerPlayer = activePlayer;
         visitsRemaining = 1;
         shotCounter = 1;
         shotHistory = [];
@@ -237,25 +232,21 @@
     function renderBallRack() {
         const row = document.getElementById('ball-row');
         row.innerHTML = "";
-        
         for (let i = 0; i < 7; i++) {
             const ball = document.createElement('div');
             ball.className = "rack-ball rack-red" + (i >= redsRemaining ? " potted" : "");
             row.appendChild(ball);
         }
-        
         const spacer = document.createElement('div');
         spacer.style.width = "2px";
         spacer.style.height = "20px";
         spacer.style.background = "rgba(255,255,255,0.15)";
         row.appendChild(spacer);
-
         for (let i = 0; i < 7; i++) {
             const ball = document.createElement('div');
             ball.className = "rack-ball rack-yellow" + (i >= yellowsRemaining ? " potted" : "");
             row.appendChild(ball);
         }
-
         if (tableColorsAssigned) {
             document.getElementById('rack-title').innerText = "Balls Left | Reds: " + redsRemaining + " - Yellows: " + yellowsRemaining;
         } else {
@@ -267,7 +258,6 @@
         tableColorsAssigned = true;
         const opponent = (activePlayer === player1) ? player2 : player1;
         const alternativeColor = (chosenColor === "Red") ? "Yellow" : "Red";
-
         playerColors[activePlayer] = chosenColor;
         playerColors[opponent] = alternativeColor;
 
@@ -294,7 +284,7 @@
         if (!activePlayer) return;
 
         const opponent = (activePlayer === player1) ? player2 : player1;
-        let matchResult = "In Progress";
+        let gameStatusValue = "In Progress";
         let nextPlayer = activePlayer;
         let nextVisits = visitsRemaining;
         let originalShotType = shotType;
@@ -312,13 +302,13 @@
             let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
             
             if (activeColor === "Open Table" || remainingCount > 0) {
-                matchResult = "Win"; 
+                gameStatusValue = "Loss of Frame - Illegal Early Black Pot"; 
                 frameWinner = opponent;
                 frameLoser = activePlayer;
                 shotType = "Loss of Frame - Illegal Early Black Pot";
                 addToLog("❌ Violation: Early black potted. " + activePlayer + " loses the frame.");
             } else {
-                matchResult = "Win";
+                gameStatusValue = "Winner: " + activePlayer + " | Loser: " + opponent;
                 frameWinner = activePlayer;
                 frameLoser = opponent;
                 nextVisits = 0;
@@ -337,13 +327,18 @@
             nextVisits = 2;
         }
 
+        // Aligning precise data mappings with your live Supabase database columns
         const shotData = {
             shot_number: shotCounter,
             player_1_home: player1,
             player_2_away: player2,
             active_player: activePlayer,
             shot_result: shotType,
-            visits_at_shot: visitsRemaining
+            visits_at_shot: visitsRemaining,
+            match_id: matchId,
+            dataset_type: "Breaker: " + breakerPlayer,
+            match_result: gameStatusValue,
+            timestamp: new Date().toISOString()
         };
 
         shotHistory.push({
@@ -364,10 +359,8 @@
         shotCounter++;
         renderBallRack();
 
-        if (matchResult === "Win") {
+        if (gameStatusValue !== "In Progress") {
             addToLog("🏆 " + frameWinner + " wins the game!");
-            
-            // Adjust the local temporary counter tally
             recordSessionWin(frameWinner, frameLoser);
 
             document.getElementById('controls-section').style.pointerEvents = "none";
@@ -375,11 +368,9 @@
             document.getElementById('setup-section').style.display = "block";
             document.getElementById('visual-rack').style.display = "none";
             
-            // Explicitly force clean result payload string to Supabase
-            shotData.shot_result = "Match Finished - Winner: " + frameWinner + " | Loser: " + frameLoser;
-            
             activePlayer = "";
             matchId = "";
+            breakerPlayer = "";
             shotCounter = 1;
             localStorage.removeItem("pool_tracker_state");
             sendToSupabase(shotData);
@@ -417,7 +408,6 @@
 
         addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_result);
 
-        // If undoing a completed frame victory state, reduce the active session score totals down safely
         if (lastAction.recordedWinner && lastAction.recordedLoser) {
             const wName = lastAction.recordedWinner;
             const lName = lastAction.recordedLoser;
@@ -435,6 +425,11 @@
         playerColors = JSON.parse(lastAction.prevPlayerColors || "{}");
         redsRemaining = lastAction.prevReds;
         yellowsRemaining = lastAction.prevYellows;
+
+        // Restore breaker extraction context from custom dataset string column
+        if (undoneShot.dataset_type && undoneShot.dataset_type.startsWith("Breaker: ")) {
+            breakerPlayer = undoneShot.dataset_type.replace("Breaker: ", "");
+        }
 
         document.getElementById('controls-section').style.pointerEvents = "auto";
         document.getElementById('controls-section').style.opacity = "1";
@@ -455,7 +450,7 @@
         renderBallRack();
         saveState();
         
-        const deleteUrl = _supabaseUrl + "?shot_number=eq." + undoneShot.shot_number + "&active_player=eq." + undoneShot.active_player;
+        const deleteUrl = _supabaseUrl + "?shot_number=eq." + undoneShot.shot_number + "&active_player=eq." + undoneShot.active_player + "&timestamp=eq." + undoneShot.timestamp;
         fetch(deleteUrl, {
             method: "DELETE",
             headers: {
@@ -473,7 +468,7 @@
 
     function saveState() {
         const state = {
-            matchId, player1, player2, activePlayer, visitsRemaining, shotCounter,
+            matchId, player1, player2, activePlayer, breakerPlayer, visitsRemaining, shotCounter,
             shotHistory, tableColorsAssigned, playerColors, redsRemaining, yellowsRemaining,
             logHTML: document.getElementById('log-box').innerHTML,
             setupVisible: document.getElementById('setup-section').style.display,
@@ -489,7 +484,8 @@
         try {
             const state = JSON.parse(raw);
             matchId = state.matchId; player1 = state.player1; player2 = state.player2;
-            activePlayer = state.activePlayer; visitsRemaining = state.visitsRemaining;
+            activePlayer = state.activePlayer; breakerPlayer = state.breakerPlayer || ""; 
+            visitsRemaining = state.visitsRemaining;
             shotCounter = state.shotCounter || 1;
             shotHistory = state.shotHistory || [];
             tableColorsAssigned = state.tableColorsAssigned;
