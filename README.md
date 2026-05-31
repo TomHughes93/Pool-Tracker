@@ -1,40 +1,59 @@
-# Pool-Tracker
-Project Portfolio: Mobile Pool Tracker Infrastructure
-Live Artifacts & Deployment Links
+# Project Documentation: Pool Tracker Application
 
-    Production Application URL: https://tomhughes93.github.io/pool-tracker/
+A lightweight, mobile-first web application designed to track real-time pool match statistics and stream granular shot-by-shot analytics directly to a Supabase PostgreSQL database for Business Intelligence (BI) reporting.
 
-    Cloud Data Warehouse Endpoint: https://dwpwxywkexjxedkgvgyi.supabase.co
+---
 
-    Source Code Repository: Hosted publicly via GitHub Pages (integrated version control management).
-Project Overview
+## Technical Architecture Overview
 
-The objective was to design, develop, and deploy a mobile-optimized sports analytics application capable of tracking real-time match events during Old EPA rule pool frames. The system eliminates manual logging by converting real-world athletic interactions into production-grade JSON strings, streaming them over a cloud API pipeline directly into a live relational database for performance analysis.
-Technical Milestones & Architecture
-1. Rules Engine & State Management (JavaScript)
+The system is engineered as a decoupled, serverless application. It prioritizes instant UI responsiveness on mobile browsers while handling data operations asynchronously to ensure performance stability even under fluctuating network conditions.
 
-    Designed a deterministic state machine using vanilla JavaScript to handle the complex penalty structures of Old EPA pool rules.
+### 1. Unified Relational Database Schema
+All gameplay events are streamed into a single unified table layout (`public.pool_shots`). This architecture captures granular match progressions and final states within a single flat dataset, optimizing query speeds for analytical aggregation.
 
-    Engineered a conditional logic loop that monitors a user's remaining visits. The engine automatically handles complex state transitions, such as downgrading a two-visit foul penalty to a single visit if a player misses their target ball on the opening shot of a turn, or passing control to the opposing player once all visits are exhausted.
+* **`shot_number` (int4):** Incremental sequence tracker for actions within an isolated frame.
+* **`match_id` (text):** Dynamically generated unique string (`match_EpochTime`) grouping all rows belonging to a single frame.
+* **`player_1_home` / `player_2_away` (text):** Selected names of the competing players.
+* **`active_player` (text):** The player executing the current shot layout.
+* **`shot_result` (text):** Categorized outcome labels capturing precise actions:
+  * Gameplay: `Pot`, `Miss`
+  * Distinguishable Foul Metrics: `Foul - Potted White`, `Foul - No Hit`, `Foul - Opponent Potted`
+  * Definitive Frame States: `Pot Black (Win Game)`, `Loss of Frame - Illegal Early Black Pot`
+* **`visits_at_shot` (int4):** Remaining table visits available to the active player (1 or 2).
+* **`dataset_type` (text):** Descriptive metadata logging the initial frame context (`Breaker: PlayerName`).
+* **`match_result` (text):** State flag fixed to `In Progress` during active frames, updating to a definitive summary string (`Winner: Name | Loser: Name`) only on the final shot row.
+* **`timestamp` (timestamptz):** ISO-8601 server-stamped execution time.
 
-2. Mobile User Interface & View Optimization
+---
 
-    Built a minimal, thumb-target interface with a responsive layout designed for one-handed mobile use in real-world environments.
+## Analytical Capabilities & BI View Generation
 
-    Implemented hidden toggle structures that allow the user to minimize setup and live data blocks during a frame, focusing screen real estate entirely on high-frequency interaction buttons.
+The flat-table layout allows you to generate distinct, high-level business intelligence layers using SQL views without duplicating raw files or altering your base table storage.
 
-3. Data Schema Design & Cloud API Integration
+### Relational Match Summary View
+Run this script within the Supabase SQL Editor to generate a permanent relational view (`view_match_summaries`) that isolates overall match history, breaker configurations, and definitive wins or losses:
 
-    Modelled an event-driven relational database schema inside an enterprise PostgreSQL instance hosted on Supabase.
-
-    Created a table structure consisting of numeric identifiers, text properties for dynamic player profiling, and high-precision timestamptz properties to capture historical event logs accurately.
-
-    Integrated an asynchronous network pipeline utilizing the modern JavaScript fetch() API. The engine converts the short-term memory array into an optimized JSON payload and posts it wirelessly via secure headers directly to the database endpoint upon match completion.
-
-4. Resiliency & Local Cache Fallbacks
-
-    Solved critical real-world mobile problems (pub signal dropouts, screen timeout refreshes) by integrating the browser's permanent memory cache (localStorage).
-
-    Structured a recovery engine that backs up the live match state on every button click. If a browser tab reloads mid-game, the app parses the local cache on page load and recovers the frame seamlessly.
-
-    Introduced a unique match_id variable derived from the ISO timestamp string to prevent concurrent data streams from overlapping within the central SQL warehouse.
+```sql
+CREATE OR REPLACE VIEW public.view_match_summaries AS
+SELECT 
+    match_id,
+    timestamp::date AS match_date,
+    player_1_home,
+    player_2_away,
+    REPLACE(dataset_type, 'Breaker: ', '') AS breaker,
+    CASE 
+        WHEN match_result LIKE '%Winner: %' THEN 
+            SPLIT_PART(SPLIT_PART(match_result, 'Winner: ', 2), ' | ', 1)
+        ELSE NULL 
+    END AS winner,
+    CASE 
+        WHEN match_result LIKE '%Loser: %' THEN 
+            SPLIT_PART(match_result, 'Loser: ', 2)
+        ELSE NULL 
+    END AS loser,
+    CASE 
+        WHEN match_result LIKE '%Loss of Frame%' THEN 'Foul Violation'
+        ELSE 'Clearance'
+    END AS win_reason
+FROM public.pool_shots
+WHERE match_result != 'In Progress';
