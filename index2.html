@@ -108,7 +108,7 @@
     </div>
 
     <div class="footer-actions">
-        <button class="btn-undo" onclick="undoLastShot()">&#x21A9; Undo Mistake</button>
+        <button class="btn-undo" onclick="undoLastShot()"><= Undo Mistake</button>
         <button class="btn-new" onclick="resetContainer()">New Game</button>
     </div>
 </div>
@@ -271,7 +271,7 @@
         const lastAction = shotHistory.pop();
         const undoneShot = lastAction.shot;
 
-        addToLog("↩ Undone: " + undoneShot.active_player + " - " + undoneShot.shot_type);
+        addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_type);
 
         try {
             await supabase.from('pool_shots')
