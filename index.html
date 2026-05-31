@@ -97,7 +97,7 @@
         <div class="log-box" id="log-box">Match initialized. Select who breaks to begin tracking.</div>
     </div>
 
-    <div id="controls-section" style="pointer-events: auto; opacity: 1;">
+    <div id="controls-section">
         <div class="section-title">Controls</div>
         <div class="grid-2">
             <button class="btn-pot" onclick="logShot('Pot')">Ball Potted</button>
@@ -161,17 +161,18 @@
         
         visitsRemaining = 1;
         shotHistory = [];
-        
         tableColorsAssigned = false;
         playerColors = {};
+        
         document.getElementById('p1-color-dot').className = "color-indicator";
         document.getElementById('p2-color-dot').className = "color-indicator";
-        
         document.getElementById('setup-section').style.display = "none";
         document.getElementById('color-assignment-ui').style.display = "block";
         
-        updateDisplay();
-        addToLog("Match started. " + activePlayer + " is breaking on an Open Table.");
+        document.getElementById('turn-display').innerText = "Turn: " + activePlayer + " (Open Table)";
+        document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
+        
+        addToLog("Match started. " + activePlayer + " is breaking.");
         saveState();
     }
 
@@ -198,7 +199,7 @@
 
     function updateDisplay() {
         if (!activePlayer) return;
-        let colorSuffix = "";
+        let colorSuffix = " (Open Table)";
         if (tableColorsAssigned && playerColors && playerColors[activePlayer]) {
             colorSuffix = " (" + playerColors[activePlayer] + "s)";
         }
@@ -210,7 +211,6 @@
         if (!activePlayer) {
             activePlayer = player1;
             matchId = "match_" + Date.now();
-            updateDisplay();
         }
 
         const opponent = (activePlayer === player1) ? player2 : player1;
@@ -258,14 +258,6 @@
         });
 
         addToLog(activePlayer + " - " + shotType);
-        updateDisplay();
-        saveState();
-
-        try {
-            await supabase.from('pool_shots').insert([shotData]);
-        } catch (err) {
-            console.log("Supabase recorded log offline instead:", err);
-        }
 
         if (matchResult === "Win") {
             addToLog("🏆 " + activePlayer + " wins the game!");
@@ -278,6 +270,12 @@
         visitsRemaining = nextVisits;
         updateDisplay();
         saveState();
+
+        try {
+            await supabase.from('pool_shots').insert([shotData]);
+        } catch (err) {
+            console.log("Supabase log handled offline:", err);
+        }
     }
 
     async function undoLastShot() {
@@ -317,7 +315,7 @@
                 .eq('match_id', undoneShot.match_id)
                 .eq('timestamp', undoneShot.timestamp);
         } catch (err) {
-            console.log("Supabase processed undo offline instead:", err);
+            console.log("Supabase undo processed offline:", err);
         }
     }
 
