@@ -31,7 +31,7 @@
         button { width: 100%; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
         .btn-pot { background-color: #34c759; }
         .btn-miss { background-color: #ff3b30; }
-        .btn-foul { background-color: #e2e2e2; color: #333; font-weight: 600; margin-bottom: 6px; border: 1px solid #cbd5e1; }
+        .btn-foul { background-color: #e2e2e2; color: #33; font-weight: 600; margin-bottom: 6px; border: 1px solid #cbd5e1; }
         .btn-win { background-color: #8e8e93; font-weight: 700; margin-bottom: 10px; }
         .log-box { width: 100%; height: 75px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 13px; background: #f8f9fa; overflow-y: auto; color: #475569; }
         .footer-actions { display: flex; gap: 10px; margin-top: 10px; }
@@ -45,7 +45,7 @@
     <h2>Pool Tracker</h2>
     
     <div class="scoreboard">
-        <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
+        <div class="turn-indicator" id="turn-display">Turn: Ginge (Open Table)</div>
         <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
         <hr style="border: 0; border-top: 1px solid #e9ecef; margin: 8px 0;">
         <div class="score-row">
@@ -83,7 +83,7 @@
         </select>
     </div>
 
-    <div class="color-assign-box" id="color-assignment-ui" style="display: none;">
+    <div class="color-assign-box" id="color-assignment-ui">
         <div class="color-assign-title">Open Table: Assign Colors</div>
         <div class="color-btn-group">
             <button class="color-assign-btn btn-claim-red" onclick="assignTableColors('Red')">Claim Reds</button>
@@ -93,7 +93,7 @@
 
     <div class="section-box">
         <div class="section-title">Game Log</div>
-        <div class="log-box" id="log-box">Select who breaks to begin tracking.</div>
+        <div class="log-box" id="log-box">Tracker ready. Press any button to log events.</div>
     </div>
 
     <div id="controls-section">
@@ -121,10 +121,10 @@
     const _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cHd4eXdrZXhqeGVka2d2Z3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODAwNTAsImV4cCI6MjA5NDc1NjA1MH0.hCnLJh87d0LDvnnvPkcdhm2MmdQOpok_QmiBBAw4e2s"; 
     const supabase = Supabase.createClient(_supabaseUrl, _supabaseKey);
 
-    let matchId = "";
+    let matchId = "match_" + Date.now();
     let player1 = "Ginge";
     let player2 = "Schmidty";
-    let activePlayer = "";
+    let activePlayer = "Ginge";
     let visitsRemaining = 1;
     let shotHistory = [];
     let tableColorsAssigned = false;
@@ -135,6 +135,10 @@
         player2 = document.getElementById('p2-select').value;
         document.getElementById('p1-name-display').innerText = player1;
         document.getElementById('p2-name-display').innerText = player2;
+        if (!tableColorsAssigned) {
+            activePlayer = player1;
+            updateDisplay();
+        }
         
         const bSelect = document.getElementById('break-select');
         bSelect.options[1].text = player1;  bSelect.options[1].value = player1;
@@ -145,21 +149,11 @@
         const selectedBreaker = document.getElementById('break-select').value;
         if (!selectedBreaker) return;
 
-        matchId = "match_" + Date.now();
         activePlayer = selectedBreaker;
         visitsRemaining = 1;
-        shotHistory = [];
-        tableColorsAssigned = false;
-        playerColors = {};
-
-        document.getElementById('p1-color-dot').className = "color-indicator";
-        document.getElementById('p2-color-dot').className = "color-indicator";
         document.getElementById('setup-section').style.display = "none";
-        document.getElementById('color-assignment-ui').style.display = "block";
         
-        document.getElementById('turn-display').innerText = "Turn: " + activePlayer + " (Open Table)";
-        document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
-        
+        updateDisplay();
         addToLog("Match started. " + activePlayer + " is breaking.");
         saveState();
     }
@@ -191,11 +185,6 @@
     }
 
     function logShot(shotType) {
-        if (!activePlayer) {
-            activePlayer = player1;
-            matchId = "match_" + Date.now();
-        }
-
         const opponent = (activePlayer === player1) ? player2 : player1;
         let matchResult = "In Progress";
         let nextPlayer = activePlayer;
@@ -242,7 +231,6 @@
 
         if (matchResult === "Win") {
             addToLog("🏆 " + activePlayer + " wins the game!");
-            activePlayer = "";
             localStorage.removeItem("pool_tracker_state");
             sendToSupabase(shotData);
             return;
@@ -259,7 +247,7 @@
         try {
             await supabase.from('pool_shots').insert([data]);
         } catch (err) {
-            console.log("Supabase handling sync background tasks.", err);
+            console.log("Supabase handling background syncing tasks.", err);
         }
     }
 
