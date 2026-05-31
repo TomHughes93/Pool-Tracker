@@ -59,8 +59,7 @@
             <span class="color-indicator" id="p2-color-dot"></span>
         </div>
     </div>
-
-    <div class="section-box" id="setup-section">
+<div class="section-box" id="setup-section">
         <div class="section-title">Match Setup</div>
         <div class="grid-2" style="margin-bottom: 6px;">
             <select id="p1-select" onchange="updatePlayerNames()">
@@ -76,6 +75,12 @@
                 <option value="Guest 2">Guest 2</option>
             </select>
         </div>
+        <select id="break-select" onchange="setStartingPlayer()">
+            <option value="">-- Who is breaking? --</option>
+            <option value="p1">Ginge</option>
+            <option value="p2">Schmidty</option>
+        </select>
+    </div>
         <select id="break-select" onchange="setStartingPlayer()">
             <option value="">-- Who is breaking? --</option>
             <option value="p1">Ginge</option>
