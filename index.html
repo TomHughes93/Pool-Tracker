@@ -12,6 +12,8 @@
         .scoreboard { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: center; }
         .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-size: 16px; font-weight: 600; border-bottom: 1px solid #edf2f7; }
         .score-row:last-child { border-bottom: none; }
+        .player-info { display: flex; align-items: center; gap: 8px; }
+        .session-tally { font-size: 14px; color: #64748b; font-weight: bold; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; }
         .color-indicator { width: 14px; height: 14px; border-radius: 50%; display: inline-block; visibility: hidden; border: 1px solid rgba(0,0,0,0.2); }
         .color-red { background-color: #ff3b30; visibility: visible; }
         .color-yellow { background-color: #ffcc00; visibility: visible; }
@@ -57,11 +59,17 @@
         <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
         <hr style="border: 0; border-top: 1px solid #e9ecef; margin: 8px 0;">
         <div class="score-row">
-            <span id="p1-name-display">Ginge</span>
+            <div class="player-info">
+                <span id="p1-name-display">Ginge</span>
+                <span class="session-tally" id="p1-tally">0W - 0L</span>
+            </div>
             <span class="color-indicator" id="p1-color-dot"></span>
         </div>
         <div class="score-row">
-            <span id="p2-name-display">Schmidty</span>
+            <div class="player-info">
+                <span id="p2-name-display">Schmidty</span>
+                <span class="session-tally" id="p2-tally">0W - 0L</span>
+            </div>
             <span class="color-indicator" id="p2-color-dot"></span>
         </div>
     </div>
@@ -144,6 +152,9 @@
     let redsRemaining = 7;
     let yellowsRemaining = 7;
 
+    // Local score memory storage configuration
+    let sessionScores = {};
+
     function updatePlayerNames() {
         player1 = document.getElementById('p1-select').value;
         player2 = document.getElementById('p2-select').value;
@@ -153,6 +164,42 @@
         const bSelect = document.getElementById('break-select');
         bSelect.options[1].text = player1;  bSelect.options[1].value = "p1";
         bSelect.options[2].text = player2;  bSelect.options[2].value = "p2";
+        
+        renderTallies();
+    }
+
+    function checkSessionExpiry() {
+        const lastSavedTime = localStorage.getItem("pool_session_timestamp");
+        const currentTime = Date.now();
+        
+        // 14 hours verification threshold limit (14 * 60 * 60 * 1000)
+        if (lastSavedTime && (currentTime - parseInt(lastSavedTime) > 50400000)) {
+            localStorage.removeItem("pool_session_scores");
+            sessionScores = {};
+        } else {
+            const savedScores = localStorage.getItem("pool_session_scores");
+            sessionScores = savedScores ? JSON.parse(savedScores) : {};
+        }
+    }
+
+    function recordSessionWin(winnerName, loserName) {
+        if (!sessionScores[winnerName]) sessionScores[winnerName] = { wins: 0, losses: 0 };
+        if (!sessionScores[loserName]) sessionScores[loserName] = { wins: 0, losses: 0 };
+        
+        sessionScores[winnerName].wins++;
+        sessionScores[loserName].losses++;
+        
+        localStorage.setItem("pool_session_scores", JSON.stringify(sessionScores));
+        localStorage.setItem("pool_session_timestamp", Date.now().toString());
+        renderTallies();
+    }
+
+    function renderTallies() {
+        const p1Data = sessionScores[player1] || { wins: 0, losses: 0 };
+        const p2Data = sessionScores[player2] || { wins: 0, losses: 0 };
+        
+        document.getElementById('p1-tally').innerText = p1Data.wins + "W - " + p1Data.losses + "L";
+        document.getElementById('p2-tally').innerText = p2Data.wins + "W - " + p2Data.losses + "L";
     }
 
     function setStartingPlayer() {
@@ -251,6 +298,8 @@
         let nextPlayer = activePlayer;
         let nextVisits = visitsRemaining;
         let originalShotType = shotType;
+        let frameWinner = "";
+        let frameLoser = "";
 
         if (shotType === 'Pot' && tableColorsAssigned) {
             const activeColor = playerColors[activePlayer];
@@ -258,20 +307,20 @@
             if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
         }
 
-        // Validation logic for early black potting rule configuration
         if (shotType === 'Pot Black (Win Game)') {
             let activeColor = playerColors[activePlayer] || "Open Table";
             let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
             
             if (activeColor === "Open Table" || remainingCount > 0) {
-                // Illegal black pot triggers immediate loss of frame; opponent wins
                 matchResult = "Win"; 
-                nextPlayer = opponent; 
+                frameWinner = opponent;
+                frameLoser = activePlayer;
                 shotType = "Loss of Frame - Illegal Early Black Pot";
                 addToLog("❌ Violation: Early black potted. " + activePlayer + " loses the frame.");
             } else {
-                // Legitimate black pot clears frame for the active player
                 matchResult = "Win";
+                frameWinner = activePlayer;
+                frameLoser = opponent;
                 nextVisits = 0;
             }
         } else if (shotType === 'Pot') {
@@ -306,7 +355,9 @@
             prevColorsAssigned: tableColorsAssigned,
             prevPlayerColors: JSON.stringify(playerColors),
             prevReds: redsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Red" ? 1 : 0),
-            prevYellows: yellowsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0)
+            prevYellows: yellowsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0),
+            recordedWinner: frameWinner,
+            recordedLoser: frameLoser
         });
 
         addToLog(activePlayer + " - " + shotType);
@@ -314,12 +365,19 @@
         renderBallRack();
 
         if (matchResult === "Win") {
-            let winner = (shotType.startsWith("Loss of Frame")) ? opponent : activePlayer;
-            addToLog("🏆 " + winner + " wins the game!");
+            addToLog("🏆 " + frameWinner + " wins the game!");
+            
+            // Adjust the local temporary counter tally
+            recordSessionWin(frameWinner, frameLoser);
+
             document.getElementById('controls-section').style.pointerEvents = "none";
             document.getElementById('controls-section').style.opacity = "0.5";
             document.getElementById('setup-section').style.display = "block";
             document.getElementById('visual-rack').style.display = "none";
+            
+            // Explicitly force clean result payload string to Supabase
+            shotData.shot_result = "Match Finished - Winner: " + frameWinner + " | Loser: " + frameLoser;
+            
             activePlayer = "";
             matchId = "";
             shotCounter = 1;
@@ -358,6 +416,16 @@
         const undoneShot = lastAction.shot;
 
         addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_result);
+
+        // If undoing a completed frame victory state, reduce the active session score totals down safely
+        if (lastAction.recordedWinner && lastAction.recordedLoser) {
+            const wName = lastAction.recordedWinner;
+            const lName = lastAction.recordedLoser;
+            if (sessionScores[wName] && sessionScores[wName].wins > 0) sessionScores[wName].wins--;
+            if (sessionScores[lName] && sessionScores[lName].losses > 0) sessionScores[lName].losses--;
+            localStorage.setItem("pool_session_scores", JSON.stringify(sessionScores));
+            renderTallies();
+        }
 
         matchId = lastAction.matchIdRef;
         shotCounter = lastAction.prevCounter;
@@ -463,6 +531,7 @@
     }
 
     window.onload = function() {
+        checkSessionExpiry();
         updatePlayerNames();
         loadState();
     };
