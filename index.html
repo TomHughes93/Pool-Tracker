@@ -23,11 +23,15 @@
         
         .ball-rack-container { background: #1e293b; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
         .ball-rack-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .ball-rack-row { display: flex; justify-content: center; gap: 8px; min-height: 24px; align-items: center; }
+        .ball-rack-row { display: flex; justify-content: center; gap: 8px; min-height: 24px; align-items: center; margin-bottom: 8px; }
         .rack-ball { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.4); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2); transition: opacity 0.2s, transform 0.2s; }
         .rack-ball.potted { opacity: 0.15; transform: scale(0.85); box-shadow: none; border: 1px dashed rgba(255,255,255,0.2); }
         .rack-red { background: radial-gradient(circle at 7px 7px, #ff6b6b, #cc0000); }
         .rack-yellow { background: radial-gradient(circle at 7px 7px, #ffeb3b, #c5a000); }
+        
+        .rack-adjustments { display: flex; justify-content: space-around; gap: 10px; }
+        .adj-btn { background: #334155; color: #cbd5e1; border: none; padding: 4px 10px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .adj-btn:active { background: #475569; }
 
         .section-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: #fff; }
         .section-title { font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
@@ -43,7 +47,7 @@
         .btn-pot { background-color: #34c759; }
         .btn-miss { background-color: #ff3b30; }
         .btn-foul { background-color: #ff9500; color: white; font-weight: bold; margin-bottom: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn-win { background-color: #000000; color: #ffffff; font-weight: 800; text-transform: uppercase; border: 2px solid #333; margin-bottom: 10px; }
+        .btn-win { background-color: #000000; color: #ffffff; font-weight: 800; text-transform: uppercase; border: 2px solid #333; margin-bottom: 6px; }
         .log-box { width: 100%; height: 75px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 13px; background: #f8f9fa; overflow-y: auto; color: #475569; }
         .footer-actions { display: flex; gap: 10px; margin-top: 10px; }
         .btn-undo { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
@@ -80,6 +84,12 @@
     <div class="ball-rack-container" id="visual-rack" style="display: none;">
         <div class="ball-rack-title" id="rack-title">Remaining Table Balls</div>
         <div class="ball-rack-row" id="ball-row"></div>
+        <div class="rack-adjustments">
+            <button class="adj-btn" onclick="breakPotAdjust('Red', -1)">-1 Red</button>
+            <button class="adj-btn" onclick="breakPotAdjust('Red', 1)">+1 Red</button>
+            <button class="adj-btn" onclick="breakPotAdjust('Yellow', -1)">-1 Yel</button>
+            <button class="adj-btn" onclick="adjustBallsSilent('Yellow', 1)">+1 Yel</button>
+        </div>
     </div>
 
     <div class="section-box" id="setup-section">
@@ -130,6 +140,7 @@
         <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul (Opponent Potted)</button>
         
         <button class="btn-win" onclick="logShot('Pot Black (Win Game)')">Pot Black (Win Game)</button>
+        <button class="btn-win" style="background-color: #4b5563;" onclick="logShot('Loss of Frame - Potted Black and White')">Pot Black + White (Loss)</button>
     </div>
 
     <div class="footer-actions">
@@ -156,8 +167,6 @@
     let redsRemaining = 7;
     let yellowsRemaining = 7;
     let sessionScores = {};
-
-    // Live frame foul counters configuration
     let p1Fouls = 0;
     let p2Fouls = 0;
 
@@ -175,15 +184,17 @@
     }
 
     function checkSessionExpiry() {
-        const lastSavedTime = localStorage.getItem("pool_session_timestamp");
-        const currentTime = Date.now();
-        if (lastSavedTime && (currentTime - parseInt(lastSavedTime) > 50400000)) {
+        const currentDateStr = new Date().toLocaleDateString('en-GB');
+        const savedDateStr = localStorage.getItem("pool_session_date");
+        
+        if (savedDateStr && savedDateStr !== currentDateStr) {
             localStorage.removeItem("pool_session_scores");
             sessionScores = {};
         } else {
             const savedScores = localStorage.getItem("pool_session_scores");
             sessionScores = savedScores ? JSON.parse(savedScores) : {};
         }
+        localStorage.setItem("pool_session_date", currentDateStr);
     }
 
     function recordSessionWin(winnerName, loserName) {
@@ -192,7 +203,6 @@
         sessionScores[winnerName].wins++;
         sessionScores[loserName].losses++;
         localStorage.setItem("pool_session_scores", JSON.stringify(sessionScores));
-        localStorage.setItem("pool_session_timestamp", Date.now().toString());
         renderTallies();
     }
 
@@ -272,6 +282,66 @@
         }
     }
 
+    // Handles the active recording event logs for break-specific pots
+    function breakPotAdjust(color, amount) {
+        if (amount > 0) {
+            adjustBallsSilent(color, amount);
+            return;
+        }
+        
+        let label = "Pot on Break - " + color;
+        let redBefore = redsRemaining;
+        let yellowBefore = yellowsRemaining;
+
+        if (color === 'Red' && redsRemaining > 0) redsRemaining--;
+        if (color === 'Yellow' && yellowsRemaining > 0) yellowsRemaining--;
+
+        const shotData = {
+            shot_number: shotCounter,
+            player_1_home: player1,
+            player_2_away: player2,
+            active_player: activePlayer,
+            shot_result: label,
+            visits_at_shot: visitsRemaining,
+            match_id: matchId,
+            dataset_type: "Breaker: " + breakerPlayer,
+            match_result: "In Progress",
+            timestamp: new Date().toISOString()
+        };
+
+        shotHistory.push({
+            shot: shotData,
+            matchIdRef: matchId,
+            prevCounter: shotCounter,
+            prevPlayer: activePlayer,
+            prevVisits: visitsRemaining,
+            prevColorsAssigned: tableColorsAssigned,
+            prevPlayerColors: JSON.stringify(playerColors),
+            prevReds: redBefore,
+            prevYellows: yellowBefore,
+            recordedWinner: "",
+            recordedLoser: "",
+            prevP1Fouls: p1Fouls,
+            prevP2Fouls: p2Fouls
+        });
+
+        addToLog(activePlayer + " - " + label);
+        shotCounter++;
+        renderBallRack();
+        saveState();
+        sendToSupabase(shotData);
+    }
+
+    function adjustBallsSilent(color, amount) {
+        if (color === 'Red') {
+            redsRemaining = Math.max(0, Math.min(7, redsRemaining + amount));
+        } else {
+            yellowsRemaining = Math.max(0, Math.min(7, yellowsRemaining + amount));
+        }
+        renderBallRack();
+        saveState();
+    }
+
     function assignTableColors(chosenColor) {
         tableColorsAssigned = true;
         const opponent = (activePlayer === player1) ? player2 : player1;
@@ -309,22 +379,27 @@
         let frameWinner = "";
         let frameLoser = "";
 
+        let redBefore = redsRemaining;
+        let yellowBefore = yellowsRemaining;
+
         if (shotType === 'Pot' && tableColorsAssigned) {
             const activeColor = playerColors[activePlayer];
             if (activeColor === "Red" && redsRemaining > 0) redsRemaining--;
             if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
         }
 
-        if (shotType === 'Pot Black (Win Game)') {
+        if (shotType === 'Pot Black (Win Game)' || shotType === 'Loss of Frame - Potted Black and White') {
             let activeColor = playerColors[activePlayer] || "Open Table";
             let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
             
-            if (activeColor === "Open Table" || remainingCount > 0) {
-                gameStatusValue = "Loss of Frame - Illegal Early Black Pot"; 
+            if (shotType === 'Loss of Frame - Potted Black and White' || activeColor === "Open Table" || remainingCount > 0) {
+                gameStatusValue = "Loss of Frame - Early or Scratch on Black"; 
                 frameWinner = opponent;
                 frameLoser = activePlayer;
-                shotType = "Loss of Frame - Illegal Early Black Pot";
-                addToLog("❌ Violation: Early black potted. " + activePlayer + " loses the frame.");
+                if (shotType !== 'Loss of Frame - Potted Black and White') {
+                    shotType = "Loss of Frame - Illegal Early Black Pot";
+                }
+                addToLog("❌ Violation: Black foul. " + activePlayer + " loses the frame.");
             } else {
                 gameStatusValue = "Winner: " + activePlayer + " | Loser: " + opponent;
                 frameWinner = activePlayer;
@@ -341,9 +416,14 @@
                 nextVisits = 1;
             }
         } else if (shotType.startsWith('Foul')) {
-            // Increment the specific active player's foul count total row
             if (activePlayer === player1) p1Fouls++; else p2Fouls++;
             updateFoulDisplay();
+            
+            if (shotType === 'Foul - Opponent Potted' && tableColorsAssigned) {
+                const opponentColor = playerColors[opponent];
+                if (opponentColor === "Red" && redsRemaining > 0) redsRemaining--;
+                if (opponentColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
+            }
             
             nextPlayer = opponent;
             nextVisits = 2;
@@ -370,8 +450,8 @@
             prevVisits: visitsRemaining,
             prevColorsAssigned: tableColorsAssigned,
             prevPlayerColors: JSON.stringify(playerColors),
-            prevReds: redsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Red" ? 1 : 0),
-            prevYellows: yellowsRemaining + (originalShotType === 'Pot' && tableColorsAssigned && playerColors[activePlayer] === "Yellow" ? 1 : 0),
+            prevReds: redBefore,
+            prevYellows: yellowBefore,
             recordedWinner: frameWinner,
             recordedLoser: frameLoser,
             prevP1Fouls: p1Fouls - (originalShotType.startsWith('Foul') && activePlayer === player1 ? 1 : 0),
