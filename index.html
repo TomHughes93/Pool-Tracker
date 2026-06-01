@@ -52,6 +52,11 @@
         .footer-actions { display: flex; gap: 10px; margin-top: 10px; }
         .btn-undo { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
         .btn-new { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
+        
+        .auth-section { margin-top: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 8px; text-align: center; }
+        .auth-input { width: 100%; padding: 8px; margin-bottom: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
+        .auth-btn { background: #475569; padding: 8px; font-size: 13px; border-radius: 4px; }
+        .auth-status { font-size: 11px; margin-top: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -147,10 +152,24 @@
         <button class="btn-undo" onclick="undoLastShot()"><= Undo Mistake</button>
         <button class="btn-new" onclick="resetContainer()">New Game</button>
     </div>
+
+    <div class="auth-section">
+        <div class="section-title">Admin Database Gate</div>
+        <div id="auth-logged-out">
+            <input type="email" id="auth-email" class="auth-input" placeholder="Supabase Email">
+            <input type="password" id="auth-password" class="auth-input" placeholder="Password">
+            <button class="auth-btn" onclick="handleLogin()">Connect Table</button>
+        </div>
+        <div id="auth-logged-in" style="display: none;">
+            <span style="color: #16a34a; font-size: 13px; font-weight: bold;">✓ Live Scoring Connected</span>
+            <button class="auth-btn" style="background: #ef4444; padding: 2px 6px; font-size: 11px; margin-left: 6px; width: auto; display: inline-block;" onclick="handleLogout()">Disconnect</button>
+        </div>
+        <div class="auth-status" id="auth-status-msg" style="color: #64748b;">Public Offline View</div>
+    </div>
 </div>
 
 <script>
-    const _supabaseUrl = "https://dwpwxywkexjxedkgvgyi.supabase.co/rest/v1/pool_shots";
+    const _supabaseUrl = "https://dwpwxywkexjxedkgvgyi.supabase.co";
     const _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cHd4eXdrZXhqeGVka2d2Z3lpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODAwNTAsImV4cCI6MjA5NDc1NjA1MH0.hCnLJh87d0LDvnnvPkcdhm2MmdQOpok_QmiBBAw4e2s"; 
 
     let matchId = "";
@@ -169,6 +188,68 @@
     let sessionScores = {};
     let p1Fouls = 0;
     let p2Fouls = 0;
+
+    function getAuthHeaders() {
+        const token = localStorage.getItem("pool_tracker_token");
+        const headers = {
+            "apikey": _supabaseKey,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+        };
+        if (token) {
+            headers["Authorization"] = "Bearer " + token;
+        } else {
+            headers["Authorization"] = "Bearer " + _supabaseKey;
+        }
+        return headers;
+    }
+
+    async function handleLogin() {
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+        const msg = document.getElementById('auth-status-msg');
+        
+        msg.innerText = "Connecting...";
+        msg.style.color = "#64748b";
+
+        try {
+            const res = await fetch(`${_supabaseUrl}/auth/v1/token?grant_type=password`, {
+                method: "POST",
+                headers: { "apikey": _supabaseKey, "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            
+            if (!res.ok || data.error) {
+                msg.innerText = "Error: " + (data.error_description || data.error || "Login Failed");
+                msg.style.color = "#ef4444";
+                return;
+            }
+
+            localStorage.setItem("pool_tracker_token", data.access_token);
+            showLoggedInState();
+        } catch (err) {
+            msg.innerText = "Connection failed.";
+            msg.style.color = "#ef4444";
+        }
+    }
+
+    function showLoggedInState() {
+        document.getElementById('auth-logged-out').style.display = "none";
+        document.getElementById('auth-logged-in').style.display = "block";
+        const msg = document.getElementById('auth-status-msg');
+        msg.innerText = "Write Access Enabled";
+        msg.style.color = "#16a34a";
+    }
+
+    function handleLogout() {
+        localStorage.removeItem("pool_tracker_token");
+        document.getElementById('auth-logged-out').style.display = "block";
+        document.getElementById('auth-logged-in').style.display = "none";
+        const msg = document.getElementById('auth-status-msg');
+        msg.innerText = "Public Offline View";
+        msg.style.color = "#64748b";
+    }
 
     function updatePlayerNames() {
         player1 = document.getElementById('p1-select').value;
@@ -282,7 +363,6 @@
         }
     }
 
-    // Handles the active recording event logs for break-specific pots
     function breakPotAdjust(color, amount) {
         if (amount > 0) {
             adjustBallsSilent(color, amount);
@@ -494,14 +574,9 @@
     }
 
     function sendToSupabase(data) {
-        fetch(_supabaseUrl, {
+        fetch(`${_supabaseUrl}/rest/v1/pool_shots`, {
             method: "POST",
-            headers: {
-                "apikey": _supabaseKey,
-                "Authorization": "Bearer " + _supabaseKey,
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(data)
         }).catch(err => console.log(err));
     }
@@ -564,13 +639,9 @@
         renderBallRack();
         saveState();
         
-        const deleteUrl = _supabaseUrl + "?shot_number=eq." + undoneShot.shot_number + "&active_player=eq." + undoneShot.active_player + "&timestamp=eq." + undoneShot.timestamp;
-        fetch(deleteUrl, {
+        fetch(`${_supabaseUrl}/rest/v1/pool_shots?shot_number=eq.${undoneShot.shot_number}&active_player=eq.${undoneShot.active_player}&timestamp=eq.${undoneShot.timestamp}`, {
             method: "DELETE",
-            headers: {
-                "apikey": _supabaseKey,
-                "Authorization": "Bearer " + _supabaseKey
-            }
+            headers: getAuthHeaders()
         }).catch(e => console.log(e));
     }
 
@@ -649,6 +720,9 @@
         checkSessionExpiry();
         updatePlayerNames();
         loadState();
+        if (localStorage.getItem("pool_tracker_token")) {
+            showLoggedInState();
+        }
     };
 </script>
 
