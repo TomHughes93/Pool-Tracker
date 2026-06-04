@@ -149,7 +149,7 @@
     </div>
 
     <div class="footer-actions">
-        <button class="btn-undo" onclick="undoLastShot()"><= Undo Mistake</button>
+        <button class="btn-undo" onclick="undoLastShot()" style="opacity: 0.5; pointer-events: none;" id="undo-btn"><= Undo Mistake</button>
         <button class="btn-new" onclick="resetContainer()">New Game</button>
     </div>
 
@@ -178,16 +178,56 @@
     let activePlayer = "";
     let breakerPlayer = "";
     let visitsRemaining = 1;
-    let shotHistory = [];
     let tableColorsAssigned = false;
     let playerColors = {}; 
-    let shotCounter = 1;
+    let isOpeningBreakCompleted = false;
 
     let redsRemaining = 7;
     let yellowsRemaining = 7;
     let sessionScores = {};
     let p1Fouls = 0;
     let p2Fouls = 0;
+
+    // LOCAL ARCHIVE HISTORY FOR PERFECT UNDO CAPABILITIES
+    let matchStats = {};
+    let actionHistoryStack = [];
+
+    function initMatchStats() {
+        matchStats = {
+            [player1]: { total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0 },
+            [player2]: { total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0 }
+        };
+        actionHistoryStack = [];
+        updateUndoButtonVisibility();
+    }
+
+    function updateUndoButtonVisibility() {
+        const btn = document.getElementById('undo-btn');
+        if (actionHistoryStack.length > 0) {
+            btn.style.opacity = "1";
+            btn.style.pointerEvents = "auto";
+        } else {
+            btn.style.opacity = "0.5";
+            btn.style.pointerEvents = "none";
+        }
+    }
+
+    function captureHistorySnapshot(actionLabel) {
+        actionHistoryStack.push({
+            label: actionLabel,
+            activePlayer: activePlayer,
+            visitsRemaining: visitsRemaining,
+            tableColorsAssigned: tableColorsAssigned,
+            playerColors: JSON.stringify(playerColors),
+            isOpeningBreakCompleted: isOpeningBreakCompleted,
+            redsRemaining: redsRemaining,
+            yellowsRemaining: yellowsRemaining,
+            p1Fouls: p1Fouls,
+            p2Fouls: p2Fouls,
+            matchStatsSnapshot: JSON.stringify(matchStats)
+        });
+        updateUndoButtonVisibility();
+    }
 
     function getAuthHeaders() {
         const token = localStorage.getItem("pool_tracker_token");
@@ -302,15 +342,16 @@
         activePlayer = (breakChoice === "p1") ? player1 : player2;
         breakerPlayer = activePlayer;
         visitsRemaining = 1;
-        shotCounter = 1;
-        shotHistory = [];
         tableColorsAssigned = false;
+        isOpeningBreakCompleted = false;
         playerColors = {};
         
         redsRemaining = 7;
         yellowsRemaining = 7;
         p1Fouls = 0;
         p2Fouls = 0;
+
+        initMatchStats();
 
         document.getElementById('p1-color-dot').className = "color-indicator";
         document.getElementById('p2-color-dot').className = "color-indicator";
@@ -369,50 +410,24 @@
             return;
         }
         
-        let label = "Pot on Break - " + color;
-        let redBefore = redsRemaining;
-        let yellowBefore = yellowsRemaining;
+        captureHistorySnapshot("Pot on Break - " + color);
 
         if (color === 'Red' && redsRemaining > 0) redsRemaining--;
         if (color === 'Yellow' && yellowsRemaining > 0) yellowsRemaining--;
 
-        const shotData = {
-            shot_number: shotCounter,
-            player_1_home: player1,
-            player_2_away: player2,
-            active_player: activePlayer,
-            shot_result: label,
-            visits_at_shot: visitsRemaining,
-            match_id: matchId,
-            dataset_type: "Breaker: " + breakerPlayer,
-            match_result: "In Progress",
-            timestamp: new Date().toISOString()
-        };
+        matchStats[activePlayer].total_shots++;
+        if (!isOpeningBreakCompleted) {
+            matchStats[activePlayer].break_pots++;
+            isOpeningBreakCompleted = true;
+        }
 
-        shotHistory.push({
-            shot: shotData,
-            matchIdRef: matchId,
-            prevCounter: shotCounter,
-            prevPlayer: activePlayer,
-            prevVisits: visitsRemaining,
-            prevColorsAssigned: tableColorsAssigned,
-            prevPlayerColors: JSON.stringify(playerColors),
-            prevReds: redBefore,
-            prevYellows: yellowBefore,
-            recordedWinner: "",
-            recordedLoser: "",
-            prevP1Fouls: p1Fouls,
-            prevP2Fouls: p2Fouls
-        });
-
-        addToLog(activePlayer + " - " + label);
-        shotCounter++;
+        addToLog(activePlayer + " - Pot on Break - " + color);
         renderBallRack();
         saveState();
-        sendToSupabase(shotData);
     }
 
     function adjustBallsSilent(color, amount) {
+        captureHistorySnapshot("Manual Ball Adjustment");
         if (color === 'Red') {
             redsRemaining = Math.max(0, Math.min(7, redsRemaining + amount));
         } else {
@@ -423,6 +438,7 @@
     }
 
     function assignTableColors(chosenColor) {
+        captureHistorySnapshot("Color Claim");
         tableColorsAssigned = true;
         const opponent = (activePlayer === player1) ? player2 : player1;
         const alternativeColor = (chosenColor === "Red") ? "Yellow" : "Red";
@@ -451,16 +467,23 @@
     function logShot(shotType) {
         if (!activePlayer) return;
 
+        captureHistorySnapshot(shotType);
+
         const opponent = (activePlayer === player1) ? player2 : player1;
-        let gameStatusValue = "In Progress";
+        let isFrameOver = false;
         let nextPlayer = activePlayer;
         let nextVisits = visitsRemaining;
-        let originalShotType = shotType;
         let frameWinner = "";
         let frameLoser = "";
 
-        let redBefore = redsRemaining;
-        let yellowBefore = yellowsRemaining;
+        matchStats[activePlayer].total_shots++;
+
+        if (!isOpeningBreakCompleted) {
+            if (shotType === 'Miss' || shotType.startsWith('Foul')) {
+                matchStats[activePlayer].break_misses++;
+            }
+            isOpeningBreakCompleted = true;
+        }
 
         if (shotType === 'Pot' && tableColorsAssigned) {
             const activeColor = playerColors[activePlayer];
@@ -472,16 +495,13 @@
             let activeColor = playerColors[activePlayer] || "Open Table";
             let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
             
+            isFrameOver = true;
             if (shotType === 'Loss of Frame - Potted Black and White' || activeColor === "Open Table" || remainingCount > 0) {
-                gameStatusValue = "Loss of Frame - Early or Scratch on Black"; 
                 frameWinner = opponent;
                 frameLoser = activePlayer;
-                if (shotType !== 'Loss of Frame - Potted Black and White') {
-                    shotType = "Loss of Frame - Illegal Early Black Pot";
-                }
+                matchStats[activePlayer].total_misses++; 
                 addToLog("❌ Violation: Black foul. " + activePlayer + " loses the frame.");
             } else {
-                gameStatusValue = "Winner: " + activePlayer + " | Loser: " + opponent;
                 frameWinner = activePlayer;
                 frameLoser = opponent;
                 nextVisits = 0;
@@ -489,6 +509,7 @@
         } else if (shotType === 'Pot') {
             nextVisits = 1; 
         } else if (shotType === 'Miss') {
+            matchStats[activePlayer].total_misses++;
             if (visitsRemaining === 2) {
                 nextVisits = 1;
             } else {
@@ -496,6 +517,7 @@
                 nextVisits = 1;
             }
         } else if (shotType.startsWith('Foul')) {
+            matchStats[activePlayer].total_misses++; 
             if (activePlayer === player1) p1Fouls++; else p2Fouls++;
             updateFoulDisplay();
             
@@ -509,40 +531,10 @@
             nextVisits = 2;
         }
 
-        const shotData = {
-            shot_number: shotCounter,
-            player_1_home: player1,
-            player_2_away: player2,
-            active_player: activePlayer,
-            shot_result: shotType,
-            visits_at_shot: visitsRemaining,
-            match_id: matchId,
-            dataset_type: "Breaker: " + breakerPlayer,
-            match_result: gameStatusValue,
-            timestamp: new Date().toISOString()
-        };
-
-        shotHistory.push({
-            shot: shotData,
-            matchIdRef: matchId,
-            prevCounter: shotCounter,
-            prevPlayer: activePlayer,
-            prevVisits: visitsRemaining,
-            prevColorsAssigned: tableColorsAssigned,
-            prevPlayerColors: JSON.stringify(playerColors),
-            prevReds: redBefore,
-            prevYellows: yellowBefore,
-            recordedWinner: frameWinner,
-            recordedLoser: frameLoser,
-            prevP1Fouls: p1Fouls - (originalShotType.startsWith('Foul') && activePlayer === player1 ? 1 : 0),
-            prevP2Fouls: p2Fouls - (originalShotType.startsWith('Foul') && activePlayer === player2 ? 1 : 0)
-        });
-
         addToLog(activePlayer + " - " + shotType);
-        shotCounter++;
         renderBallRack();
 
-        if (gameStatusValue !== "In Progress") {
+        if (isFrameOver) {
             addToLog("🏆 " + frameWinner + " wins the game!");
             recordSessionWin(frameWinner, frameLoser);
 
@@ -553,16 +545,16 @@
             document.getElementById('p1-fouls').style.display = "none";
             document.getElementById('p2-fouls').style.display = "none";
             
-            shotData.shot_result = "Match Finished - Winner: " + frameWinner + " | Loser: " + frameLoser;
-            
+            sendSummariesToSupabase(frameWinner, frameLoser);
+
             activePlayer = "";
             matchId = "";
             breakerPlayer = "";
-            shotCounter = 1;
             p1Fouls = 0;
             p2Fouls = 0;
+            actionHistoryStack = [];
+            updateUndoButtonVisibility();
             localStorage.removeItem("pool_tracker_state");
-            sendToSupabase(shotData);
             return;
         }
 
@@ -570,79 +562,73 @@
         visitsRemaining = nextVisits;
         updateDisplay();
         saveState();
-        sendToSupabase(shotData);
     }
 
-    function sendToSupabase(data) {
-        fetch(`${_supabaseUrl}/rest/v1/pool_shots`, {
+    function sendSummariesToSupabase(winner, loser) {
+        const payload = [
+            {
+                match_id: matchId,
+                player_name: winner,
+                is_winner: true,
+                total_shots: matchStats[winner].total_shots,
+                total_misses: matchStats[winner].total_misses,
+                break_pots: matchStats[winner].break_pots,
+                break_misses: matchStats[winner].break_misses
+            },
+            {
+                match_id: matchId,
+                player_name: loser,
+                is_winner: false,
+                total_shots: matchStats[loser].total_shots,
+                total_misses: matchStats[loser].total_misses,
+                break_pots: matchStats[loser].break_pots,
+                break_misses: matchStats[loser].break_misses
+            }
+        ];
+
+        fetch(`${_supabaseUrl}/rest/v1/match_summaries`, {
             method: "POST",
             headers: getAuthHeaders(),
-            body: JSON.stringify(data)
-        }).catch(err => console.log(err));
+            body: JSON.stringify(payload)
+        })
+        .then(() => console.log('Aggregated match metrics securely logged.'))
+        .catch(err => console.error('Database payload transmission fault:', err));
     }
 
     function undoLastShot() {
-        if (shotHistory.length === 0) {
-            alert("No shots left to undo.");
-            return;
-        }
+        if (actionHistoryStack.length === 0) return;
 
-        const lastAction = shotHistory.pop();
-        const undoneShot = lastAction.shot;
+        const lastState = actionHistoryStack.pop();
 
-        addToLog("<= Undone: " + undoneShot.active_player + " - " + undoneShot.shot_result);
+        activePlayer = lastState.activePlayer;
+        visitsRemaining = lastState.visitsRemaining;
+        tableColorsAssigned = lastState.tableColorsAssigned;
+        playerColors = JSON.parse(lastState.playerColors);
+        isOpeningBreakCompleted = lastState.isOpeningBreakCompleted;
+        redsRemaining = lastState.redsRemaining;
+        yellowsRemaining = lastState.yellowsRemaining;
+        p1Fouls = lastState.p1Fouls;
+        p2Fouls = lastState.p2Fouls;
+        matchStats = JSON.parse(lastState.matchStatsSnapshot);
 
-        if (lastAction.recordedWinner && lastAction.recordedLoser) {
-            const wName = lastAction.recordedWinner;
-            const lName = lastAction.recordedLoser;
-            if (sessionScores[wName] && sessionScores[wName].wins > 0) sessionScores[wName].wins--;
-            if (sessionScores[lName] && sessionScores[lName].losses > 0) sessionScores[lName].losses--;
-            localStorage.setItem("pool_session_scores", JSON.stringify(sessionScores));
-            renderTallies();
-        }
-
-        matchId = lastAction.matchIdRef;
-        shotCounter = lastAction.prevCounter;
-        activePlayer = lastAction.prevPlayer;
-        visitsRemaining = lastAction.prevVisits;
-        tableColorsAssigned = lastAction.prevColorsAssigned;
-        playerColors = JSON.parse(lastAction.prevPlayerColors || "{}");
-        redsRemaining = lastAction.prevReds;
-        yellowsRemaining = lastAction.prevYellows;
-        p1Fouls = lastAction.prevP1Fouls;
-        p2Fouls = lastAction.prevP2Fouls;
-
-        if (undoneShot.dataset_type && undoneShot.dataset_type.startsWith("Breaker: ")) {
-            breakerPlayer = undoneShot.dataset_type.replace("Breaker: ", "");
-        }
-
-        document.getElementById('controls-section').style.pointerEvents = "auto";
-        document.getElementById('controls-section').style.opacity = "1";
-        document.getElementById('setup-section').style.display = "none";
-        document.getElementById('visual-rack').style.display = "block";
-        document.getElementById('p1-fouls').style.display = "inline-block";
-        document.getElementById('p2-fouls').style.display = "inline-block";
-        
-        updateFoulDisplay();
-
-        if (!tableColorsAssigned) {
-            document.getElementById('color-assignment-ui').style.display = "block";
-            document.getElementById('p1-color-dot').className = "color-indicator";
-            document.getElementById('p2-color-dot').className = "color-indicator";
-        } else {
+        // Update indicators
+        if (tableColorsAssigned) {
             document.getElementById('color-assignment-ui').style.display = "none";
             if (playerColors[player1]) document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
             if (playerColors[player2]) document.getElementById('p2-color-dot').className = "color-indicator color-" + playerColors[player2].toLowerCase();
+        } else {
+            document.getElementById('color-assignment-ui').style.display = "block";
+            document.getElementById('p1-color-dot').className = "color-indicator";
+            document.getElementById('p2-color-dot').className = "color-indicator";
         }
 
+        updateFoulDisplay();
         updateDisplay();
         renderBallRack();
-        saveState();
+        updateUndoButtonVisibility();
         
-        fetch(`${_supabaseUrl}/rest/v1/pool_shots?shot_number=eq.${undoneShot.shot_number}&active_player=eq.${undoneShot.active_player}&timestamp=eq.${undoneShot.timestamp}`, {
-            method: "DELETE",
-            headers: getAuthHeaders()
-        }).catch(e => console.log(e));
+        addToLog("↩ Undone: " + lastState.label);
+        saveState();
     }
 
     function addToLog(msg) {
@@ -653,8 +639,8 @@
 
     function saveState() {
         const state = {
-            matchId, player1, player2, activePlayer, breakerPlayer, visitsRemaining, shotCounter,
-            shotHistory, tableColorsAssigned, playerColors, redsRemaining, yellowsRemaining, p1Fouls, p2Fouls,
+            matchId, player1, player2, activePlayer, breakerPlayer, visitsRemaining, isOpeningBreakCompleted,
+            tableColorsAssigned, playerColors, redsRemaining, yellowsRemaining, p1Fouls, p2Fouls, matchStats, actionHistoryStack,
             logHTML: document.getElementById('log-box').innerHTML,
             setupVisible: document.getElementById('setup-section').style.display,
             colorVisible: document.getElementById('color-assignment-ui').style.display,
@@ -671,14 +657,15 @@
             matchId = state.matchId; player1 = state.player1; player2 = state.player2;
             activePlayer = state.activePlayer; breakerPlayer = state.breakerPlayer || ""; 
             visitsRemaining = state.visitsRemaining;
-            shotCounter = state.shotCounter || 1;
-            shotHistory = state.shotHistory || [];
+            isOpeningBreakCompleted = state.isOpeningBreakCompleted || false;
             tableColorsAssigned = state.tableColorsAssigned;
             playerColors = state.playerColors || {};
             redsRemaining = state.redsRemaining !== undefined ? state.redsRemaining : 7;
             yellowsRemaining = state.yellowsRemaining !== undefined ? state.yellowsRemaining : 7;
             p1Fouls = state.p1Fouls || 0;
             p2Fouls = state.p2Fouls || 0;
+            matchStats = state.matchStats || {};
+            actionHistoryStack = state.actionHistoryStack || [];
 
             document.getElementById('p1-select').value = player1;
             document.getElementById('p2-select').value = player2;
@@ -704,6 +691,7 @@
                 renderBallRack();
             }
             updateDisplay();
+            updateUndoButtonVisibility();
         } catch (e) {
             console.error(e);
         }
