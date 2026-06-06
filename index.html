@@ -188,14 +188,13 @@
     let p1Fouls = 0;
     let p2Fouls = 0;
 
-    // LOCAL ARCHIVE HISTORY FOR PERFECT UNDO CAPABILITIES
     let matchStats = {};
     let actionHistoryStack = [];
 
     function initMatchStats() {
         matchStats = {
-            [player1]: { total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0 },
-            [player2]: { total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0 }
+            [player1]: { total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0, total_fouls: 0 },
+            [player2]: { total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0, total_fouls: 0 }
         };
         actionHistoryStack = [];
         updateUndoButtonVisibility();
@@ -500,6 +499,7 @@
                 frameWinner = opponent;
                 frameLoser = activePlayer;
                 matchStats[activePlayer].total_misses++; 
+                matchStats[activePlayer].total_fouls++; // Black ball foul or scratch counts as a final foul
                 addToLog("❌ Violation: Black foul. " + activePlayer + " loses the frame.");
             } else {
                 frameWinner = activePlayer;
@@ -518,6 +518,7 @@
             }
         } else if (shotType.startsWith('Foul')) {
             matchStats[activePlayer].total_misses++; 
+            matchStats[activePlayer].total_fouls++; // Increment our newly added local parameter
             if (activePlayer === player1) p1Fouls++; else p2Fouls++;
             updateFoulDisplay();
             
@@ -564,6 +565,7 @@
         saveState();
     }
 
+    // UPDATED PAYLOAD DELIVERING THE NEW ARCHITECTURE VALUE
     function sendSummariesToSupabase(winner, loser) {
         const payload = [
             {
@@ -573,7 +575,8 @@
                 total_shots: matchStats[winner].total_shots,
                 total_misses: matchStats[winner].total_misses,
                 break_pots: matchStats[winner].break_pots,
-                break_misses: matchStats[winner].break_misses
+                break_misses: matchStats[winner].break_misses,
+                total_fouls: matchStats[winner].total_fouls
             },
             {
                 match_id: matchId,
@@ -582,7 +585,8 @@
                 total_shots: matchStats[loser].total_shots,
                 total_misses: matchStats[loser].total_misses,
                 break_pots: matchStats[loser].break_pots,
-                break_misses: matchStats[loser].break_misses
+                break_misses: matchStats[loser].break_misses,
+                total_fouls: matchStats[loser].total_fouls
             }
         ];
 
@@ -591,7 +595,7 @@
             headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         })
-        .then(() => console.log('Aggregated match metrics securely logged.'))
+        .then(() => console.log('Aggregated match metrics with foul telemetry logged.'))
         .catch(err => console.error('Database payload transmission fault:', err));
     }
 
@@ -611,7 +615,6 @@
         p2Fouls = lastState.p2Fouls;
         matchStats = JSON.parse(lastState.matchStatsSnapshot);
 
-        // Update indicators
         if (tableColorsAssigned) {
             document.getElementById('color-assignment-ui').style.display = "none";
             if (playerColors[player1]) document.getElementById('p1-color-dot').className = "color-indicator color-" + playerColors[player1].toLowerCase();
