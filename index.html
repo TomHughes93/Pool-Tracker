@@ -30,7 +30,7 @@
         .rack-yellow { background: radial-gradient(circle at 7px 7px, #ffeb3b, #c5a000); }
         
         .rack-adjustments { display: flex; justify-content: space-around; gap: 10px; }
-        .adj-btn { background: #334155; color: #cbd5e1; border: none; padding: 4px 10px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .adj-btn { background: #334155; color: #cbd5e1; border: none; padding: 6px 16px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
         .adj-btn:active { background: #475569; }
 
         .section-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: #fff; }
@@ -91,9 +91,7 @@
         <div class="ball-rack-row" id="ball-row"></div>
         <div class="rack-adjustments">
             <button class="adj-btn" onclick="breakPotAdjust('Red', -1)">-1 Red</button>
-            <button class="adj-btn" onclick="breakPotAdjust('Red', 1)">+1 Red</button>
-            <button class="adj-btn" onclick="breakPotAdjust('Yellow', -1)">-1 Yel</button>
-            <button class="adj-btn" onclick="adjustBallsSilent('Yellow', 1)">+1 Yel</button>
+            <button class="adj-btn" onclick="breakPotAdjust('Yellow', -1)">-1 Yellow</button>
         </div>
     </div>
 
@@ -144,7 +142,7 @@
         <button class="btn-foul" onclick="logShot('Foul - No Hit')">Foul (No Hit/Wrong Ball)</button>
         <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul (Opponent Potted)</button>
         
-        <button class="btn-win" onclick="logShot('Pot Black (Win Game)')">Pot Black (Win Game)</button>
+        <button class="btn-win" onclick="logShot('Pot Black')">Pot Black</button>
         <button class="btn-win" style="background-color: #4b5563;" onclick="logShot('Loss of Frame - Potted Black and White')">Pot Black + White (Loss)</button>
     </div>
 
@@ -265,7 +263,9 @@
                 return;
             }
 
+            // Save both the token and a programmatic tracking timestamp for internal session control
             localStorage.setItem("pool_tracker_token", data.access_token);
+            localStorage.setItem("pool_tracker_authenticated_at", Math.floor(Date.now() / 1000).toString());
             showLoggedInState();
         } catch (err) {
             msg.innerText = "Connection failed.";
@@ -283,6 +283,7 @@
 
     function handleLogout() {
         localStorage.removeItem("pool_tracker_token");
+        localStorage.removeItem("pool_tracker_authenticated_at");
         document.getElementById('auth-logged-out').style.display = "block";
         document.getElementById('auth-logged-in').style.display = "none";
         const msg = document.getElementById('auth-status-msg');
@@ -315,6 +316,22 @@
             sessionScores = savedScores ? JSON.parse(savedScores) : {};
         }
         localStorage.setItem("pool_session_date", currentDateStr);
+
+        // Code-Level Automated Security Lifespan Check (Plan B)
+        const token = localStorage.getItem("pool_tracker_token");
+        const authTimestamp = localStorage.getItem("pool_tracker_authenticated_at");
+        
+        if (token && authTimestamp) {
+            const loginTime = parseInt(authTimestamp, 10);
+            const currentTime = Math.floor(Date.now() / 1000);
+            const extendedExpirySeconds = 604799; // Corresponds with Supabase backend configuration threshold
+            const safetyBuffer = 43200; // 12-hour closing verification barrier
+            
+            if ((loginTime + extendedExpirySeconds) - currentTime < safetyBuffer) {
+                console.log("Database token entering critical security expiration window. Cleaning local authorization state.");
+                handleLogout();
+            }
+        }
     }
 
     function recordSessionWin(winnerName, loserName) {
@@ -404,10 +421,7 @@
     }
 
     function breakPotAdjust(color, amount) {
-        if (amount > 0) {
-            adjustBallsSilent(color, amount);
-            return;
-        }
+        if (amount > 0) return; // Disregard positive additions entirely per request
         
         captureHistorySnapshot("Pot on Break - " + color);
 
@@ -421,17 +435,6 @@
         }
 
         addToLog(activePlayer + " - Pot on Break - " + color);
-        renderBallRack();
-        saveState();
-    }
-
-    function adjustBallsSilent(color, amount) {
-        captureHistorySnapshot("Manual Ball Adjustment");
-        if (color === 'Red') {
-            redsRemaining = Math.max(0, Math.min(7, redsRemaining + amount));
-        } else {
-            yellowsRemaining = Math.max(0, Math.min(7, yellowsRemaining + amount));
-        }
         renderBallRack();
         saveState();
     }
@@ -490,7 +493,7 @@
             if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
         }
 
-        if (shotType === 'Pot Black (Win Game)' || shotType === 'Loss of Frame - Potted Black and White') {
+        if (shotType === 'Pot Black' || shotType === 'Loss of Frame - Potted Black and White') {
             let activeColor = playerColors[activePlayer] || "Open Table";
             let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
             
@@ -499,7 +502,7 @@
                 frameWinner = opponent;
                 frameLoser = activePlayer;
                 matchStats[activePlayer].total_misses++; 
-                matchStats[activePlayer].total_fouls++; // Black ball foul or scratch counts as a final foul
+                matchStats[activePlayer].total_fouls++; 
                 addToLog("❌ Violation: Black foul. " + activePlayer + " loses the frame.");
             } else {
                 frameWinner = activePlayer;
@@ -518,7 +521,7 @@
             }
         } else if (shotType.startsWith('Foul')) {
             matchStats[activePlayer].total_misses++; 
-            matchStats[activePlayer].total_fouls++; // Increment our newly added local parameter
+            matchStats[activePlayer].total_fouls++; 
             if (activePlayer === player1) p1Fouls++; else p2Fouls++;
             updateFoulDisplay();
             
@@ -565,7 +568,6 @@
         saveState();
     }
 
-    // UPDATED PAYLOAD DELIVERING THE NEW ARCHITECTURE VALUE
     function sendSummariesToSupabase(winner, loser) {
         const payload = [
             {
@@ -595,7 +597,7 @@
             headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         })
-        .then(() => console.log('Aggregated match metrics with foul telemetry logged.'))
+        .then(() => console.log('Aggregated match metrics logged successfully.'))
         .catch(err => console.error('Database payload transmission fault:', err));
     }
 
@@ -714,6 +716,9 @@
         if (localStorage.getItem("pool_tracker_token")) {
             showLoggedInState();
         }
+
+        // Set up background monitoring engine to verify session health every 60 seconds
+        setInterval(checkSessionExpiry, 60000);
     };
 </script>
 
