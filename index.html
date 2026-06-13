@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pool Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #0f172a; margin: 0; padding: 2px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
-        .container { width: 100%; max-width: 450px; background: #1e293b; padding: 4px; border: 1px solid #232e3f; }
+        .container { width: 100%; max-width: 450px; background: #1e293b; padding: 4px; border: 1px solid #334155; }
         h2 { text-align: center; margin: 0 0 4px 0; font-size: 15px; color: #f8fafc; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .scoreboard { background: #0f172a; border: 1px solid #232e3f; padding: 6px; margin-bottom: 2px; text-align: center; }
+        .scoreboard { background: #0f172a; border: 1px solid #334155; padding: 6px; margin-bottom: 2px; text-align: center; }
         .score-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; }
         .score-row:last-child { border-bottom: none; }
         .player-info { display: flex; align-items: center; gap: 4px; }
@@ -22,7 +23,7 @@
         .turn-indicator { font-size: 13px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1px; }
         .visits-indicator { font-size: 15px; font-weight: 800; color: #38bdf8; }
         
-        .ball-rack-container { background: #0f172a; border: 1px solid #232e3f; padding: 4px; margin-bottom: 2px; text-align: center; }
+        .ball-rack-container { background: #0f172a; border: 1px solid #334155; padding: 4px; margin-bottom: 2px; text-align: center; }
         .ball-rack-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
         .ball-rack-row { display: flex; justify-content: center; gap: 3px; min-height: 18px; align-items: center; margin-bottom: 4px; }
         .rack-ball { width: 16px; height: 16px; border: 1px solid #000; transition: opacity 0.2s; }
@@ -31,14 +32,14 @@
         .rack-yellow { background: #eab308; }
         
         .rack-adjustments { display: flex; gap: 2px; }
-        .adj-btn { background: #1e293b; color: #94a3b8; border: 1px solid #232e3f; padding: 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: 1; }
+        .adj-btn { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: 1; }
         .adj-btn:active { background: #334155; color: #fff; }
 
-        .section-box { border: 1px solid #232e3f; padding: 4px; margin-bottom: 2px; background: #0f172a; }
+        .section-box { border: 1px solid #334155; padding: 4px; margin-bottom: 2px; background: #0f172a; }
         .section-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
-        select { width: 100%; padding: 4px; border: 1px solid #232e3f; font-size: 13px; background-color: #1e293b; color: #fff; height: 36px; }
+        select { width: 100%; padding: 4px; border: 1px solid #334155; font-size: 13px; background-color: #1e293b; color: #fff; height: 36px; }
         
-        .color-assign-box { background: #0f172a; border: 1px solid #232e3f; padding: 6px; margin-bottom: 2px; text-align: center; }
+        .color-assign-box { background: #0f172a; border: 1px solid #334155; padding: 6px; margin-bottom: 2px; text-align: center; }
         .color-assign-title { font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
         .color-btn-group { display: flex; gap: 2px; }
         .color-assign-btn { flex: 1; padding: 20px 4px; border: none; font-weight: 900; font-size: 15px; text-transform: uppercase; color: white; cursor: pointer; }
@@ -65,15 +66,25 @@
         .btn-loss { background-color: #4b5563; border: 1px solid #475569; font-size: 11px; color: #ffffff; }
         .btn-loss:active { background-color: #374151; }
         
-        .log-box { width: 100%; height: 70px; border: 1px solid #232e3f; padding: 4px; font-size: 11px; background: #0f172a; overflow-y: auto; color: #94a3b8; }
+        .log-box { width: 100%; height: 70px; border: 1px solid #334155; padding: 4px; font-size: 11px; background: #0f172a; overflow-y: auto; color: #94a3b8; }
+        
+        .tab-menu { display: flex; gap: 2px; margin-bottom: 4px; }
+        .tab-btn { background: #334155; color: #94a3b8; padding: 12px; font-size: 13px; font-weight: 800; text-align: center; cursor: pointer; flex: 1; border: none; }
+        .tab-btn.active { background: #38bdf8; color: #0f172a; }
+        
+        .stats-panel { display: none; background: #0f172a; border: 1px solid #334155; padding: 6px; color: #f1f5f9; }
+        .stats-loading { text-align: center; padding: 20px; color: #94a3b8; font-weight: bold; font-size: 14px; }
+        .chart-box { background: #1e293b; border: 1px solid #334155; padding: 6px; margin-bottom: 4px; }
+        .chart-title { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+        
         .footer-actions { display: flex; gap: 2px; margin-top: 2px; }
-        .btn-undo { background-color: #1e293b; color: #cbd5e1; border: 1px solid #232e3f; font-size: 12px; padding: 12px; }
+        .btn-undo { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 12px; padding: 12px; }
         .btn-undo:active { background-color: #334155; }
-        .btn-new { background-color: #1e293b; color: #cbd5e1; border: 1px solid #232e3f; font-size: 12px; padding: 12px; }
+        .btn-new { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 12px; padding: 12px; }
         .btn-new:active { background-color: #334155; }
         
-        .auth-section { margin-top: 6px; background: #0f172a; border: 1px dashed #232e3f; padding: 4px; text-align: center; }
-        .auth-input { width: 100%; padding: 6px; margin-bottom: 2px; border: 1px solid #232e3f; background: #1e293b; color: #fff; font-size: 12px; }
+        .auth-section { margin-top: 6px; background: #0f172a; border: 1px dashed #334155; padding: 4px; text-align: center; }
+        .auth-input { width: 100%; padding: 6px; margin-bottom: 2px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 12px; }
         .auth-btn { background: #334155; padding: 6px; font-size: 11px; }
         .auth-status { font-size: 10px; margin-top: 2px; font-weight: bold; }
     </style>
@@ -86,7 +97,7 @@
     <div class="scoreboard">
         <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
         <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
-        <hr style="border: 0; border-top: 1px solid #232e3f; margin: 4px 0;">
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 4px 0;">
         <div class="score-row">
             <div class="player-info">
                 <span id="p1-name-display">Ginge</span>
@@ -157,27 +168,52 @@
         </div>
     </div>
 
-    <div class="section-box">
-        <div class="section-title">Game Log</div>
-        <div class="log-box" id="log-box">Select who breaks to begin tracking.</div>
+    <div class="tab-menu">
+        <button class="tab-btn active" id="tab-track" onclick="switchTab('track')">Tracking Engine</button>
+        <button class="tab-btn" id="tab-stats" onclick="switchTab('stats')">Performance Metrics</button>
     </div>
 
-    <div id="controls-section" style="pointer-events: none; opacity: 0.4;">
-        <div class="section-title">Controls</div>
-        <div class="grid-2">
-            <button class="btn-pot" onclick="logShot('Pot')">Ball Potted</button>
-            <button class="btn-miss" onclick="logShot('Miss')">Miss</button>
+    <div id="panel-track">
+        <div class="section-box">
+            <div class="section-title">Game Log</div>
+            <div class="log-box" id="log-box">Select who breaks to begin tracking.</div>
         </div>
-        
-        <div class="grid-3">
-            <button class="btn-foul" onclick="logShot('Foul - Potted White')">Foul<br>(White)</button>
-            <button class="btn-foul" onclick="logShot('Foul - No Hit')">Foul<br>(No Hit)</button>
-            <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul<br>(Opp Pot)</button>
+
+        <div id="controls-section" style="pointer-events: none; opacity: 0.4;">
+            <div class="section-title">Controls</div>
+            <div class="grid-2">
+                <button class="btn-pot" onclick="logShot('Pot')">Ball Potted</button>
+                <button class="btn-miss" onclick="logShot('Miss')">Miss</button>
+            </div>
+            
+            <div class="grid-3">
+                <button class="btn-foul" onclick="logShot('Foul - Potted White')">Foul<br>(White)</button>
+                <button class="btn-foul" onclick="logShot('Foul - No Hit')">Foul<br>(No Hit)</button>
+                <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul<br>(Opp Pot)</button>
+            </div>
+            
+            <div class="grid-2">
+                <button class="btn-win" onclick="logShot('Pot Black')">Pot Black (Win)</button>
+                <button class="btn-loss" onclick="logShot('Loss of Frame - Potted Black and White')">Black + White (Loss)</button>
+            </div>
         </div>
-        
-        <div class="grid-2">
-            <button class="btn-win" onclick="logShot('Pot Black')">Pot Black (Win)</button>
-            <button class="btn-loss" onclick="logShot('Loss of Frame - Potted Black and White')">Black + White (Loss)</button>
+    </div>
+
+    <div id="panel-stats" class="stats-panel">
+        <div id="stats-loader" class="stats-loading">Syncing metrics with Supabase backend...</div>
+        <div id="stats-charts-wrapper" style="display: none;">
+            <div class="chart-box">
+                <div class="chart-title">Head-to-Head Win Distribution</div>
+                <canvas id="chart-wins" height="140"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">Pot Accuracy & Pots Per Visit</div>
+                <canvas id="chart-accuracy" height="160"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">Average Visits & Foul Frequency</div>
+                <canvas id="chart-visits" height="160"></canvas>
+            </div>
         </div>
     </div>
 
@@ -223,6 +259,7 @@
 
     let matchStats = {};
     let actionHistoryStack = [];
+    let activeCharts = {};
 
     function initMatchStats() {
         matchStats = {
@@ -673,6 +710,105 @@
         const box = document.getElementById('log-box');
         box.innerHTML += "<div>" + msg + "</div>";
         box.scrollTop = box.scrollHeight;
+    }
+
+    function switchTab(targetTab) {
+        document.getElementById('tab-track').className = 'tab-btn' + (targetTab === 'track' ? ' active' : '');
+        document.getElementById('tab-stats').className = 'tab-btn' + (targetTab === 'stats' ? ' active' : '');
+        
+        if(targetTab === 'track') {
+            document.getElementById('panel-track').style.display = 'block';
+            document.getElementById('panel-stats').style.display = 'none';
+        } else {
+            document.getElementById('panel-track').style.display = 'none';
+            document.getElementById('panel-stats').style.display = 'block';
+            fetchHistoricalMetrics();
+        }
+    }
+
+    async function fetchHistoricalMetrics() {
+        document.getElementById('stats-loader').style.display = 'block';
+        document.getElementById('stats-charts-wrapper').style.display = 'none';
+        
+        const p1 = document.getElementById('p1-select').value;
+        const p2 = document.getElementById('p2-select').value;
+        
+        try {
+            const res = await fetch(`${_supabaseUrl}/rest/v1/match_summaries?player_name=in.("${p1}","${p2}")`, {
+                method: "GET",
+                headers: { "apikey": _supabaseKey, "Content-Type": "application/json" }
+            });
+            const rows = await res.ok ? await res.json() : [];
+            renderPerformanceCharts(p1, p2, rows);
+        } catch(e) {
+            document.getElementById('stats-loader').innerText = "Transmission error connecting to cloud server.";
+        }
+    }
+
+    function renderPerformanceCharts(p1, p2, dataRows) {
+        document.getElementById('stats-loader').style.display = 'none';
+        document.getElementById('stats-charts-wrapper').style.display = 'block';
+
+        let aggregation = {
+            [p1]: { wins: 0, total: 0, shots: 0, misses: 0, fouls: 0 },
+            [p2]: { wins: 0, total: 0, shots: 0, misses: 0, fouls: 0 }
+        };
+
+        dataRows.forEach(row => {
+            let name = row.player_name;
+            if (aggregation[name]) {
+                aggregation[name].total++;
+                if (row.is_winner) aggregation[name].wins++;
+                aggregation[name].shots += (row.total_shots || 0);
+                aggregation[name].misses += (row.total_misses || 0);
+                aggregation[name].fouls += (row.total_fouls || 0);
+            }
+        });
+
+        // Safe division logic for metrics calculations
+        const getAccuracy = p => aggregation[p].shots ? Math.round(((aggregation[p].shots - aggregation[p].misses) / aggregation[p].shots) * 100) : 0;
+        const getPotsPerVisit = p => aggregation[p].total ? ((aggregation[p].shots - aggregation[p].misses) / (aggregation[p].misses + aggregation[p].wins)).toFixed(1) : 0;
+        const getAverageVisits = p => aggregation[p].total ? ((aggregation[p].misses + aggregation[p].wins) / aggregation[p].total).toFixed(1) : 0;
+        const getFoulFrequency = p => aggregation[p].shots ? (aggregation[p].fouls / aggregation[p].shots).toFixed(2) : 0;
+
+        // Reset tracking objects between tab toggles
+        Object.keys(activeCharts).forEach(key => activeCharts[key].destroy());
+
+        // Chart 1: Win/Loss Horizontal Bars
+        activeCharts['wins'] = new Chart(document.getElementById('chart-wins'), {
+            type: 'bar',
+            data: {
+                labels: [p1, p2],
+                datasets: [{ data: [aggregation[p1].wins, aggregation[p2].wins], backgroundColor: ['#38bdf8', '#a78bfa'] }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#334155' } } } }
+        });
+
+        // Chart 2: Potting Accuracy & Pots Per Visit Group
+        activeCharts['accuracy'] = new Chart(document.getElementById('chart-accuracy'), {
+            type: 'bar',
+            data: {
+                labels: ['Accuracy (%)', 'Pots/Visit (x10)'],
+                datasets: [
+                    { label: p1, data: [getAccuracy(p1), getPotsPerVisit(p1) * 10], backgroundColor: '#38bdf8' },
+                    { label: p2, data: [getAccuracy(p2), getPotsPerVisit(p2) * 10], backgroundColor: '#a78bfa' }
+                ]
+            },
+            options: { scales: { y: { min: 0, max: 100, grid: { color: '#334155' } } } }
+        });
+
+        // Chart 3: Average Visits & Foul Frequency
+        activeCharts['visits'] = new Chart(document.getElementById('chart-visits'), {
+            type: 'bar',
+            data: {
+                labels: ['Avg Visits', 'Foul Freq (x100)'],
+                datasets: [
+                    { label: p1, data: [getAverageVisits(p1), getFoulFrequency(p1) * 100], backgroundColor: '#38bdf8' },
+                    { label: p2, data: [getAverageVisits(p2), getFoulFrequency(p2) * 100], backgroundColor: '#a78bfa' }
+                ]
+            },
+            options: { scales: { y: { min: 0, grid: { color: '#334155' } } } }
+        });
     }
 
     function saveState() {
