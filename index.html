@@ -6,56 +6,71 @@
     <title>Pool Tracker</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: #eef2f3; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
-        .container { width: 100%; max-width: 450px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-        h2 { text-align: center; margin: 0 0 10px 0; font-size: 20px; color: #333; }
-        .scoreboard { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: center; }
-        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-size: 16px; font-weight: 600; border-bottom: 1px solid #edf2f7; }
+        body { background-color: #0f172a; margin: 0; padding: 8px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
+        .container { width: 100%; max-width: 450px; background: #1e293b; padding: 12px; border: 1px solid #334155; }
+        h2 { text-align: center; margin: 0 0 10px 0; font-size: 18px; color: #f8fafc; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .scoreboard { background: #0f172a; border: 1px solid #334155; padding: 10px; margin-bottom: 8px; text-align: center; }
+        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-size: 15px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; }
         .score-row:last-child { border-bottom: none; }
         .player-info { display: flex; align-items: center; gap: 8px; }
-        .session-tally { font-size: 14px; color: #64748b; font-weight: bold; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; }
-        .foul-tally { font-size: 13px; color: #ffffff; font-weight: bold; background: #ff9500; padding: 2px 6px; border-radius: 4px; }
-        .color-indicator { width: 14px; height: 14px; border-radius: 50%; display: inline-block; visibility: hidden; border: 1px solid rgba(0,0,0,0.2); }
-        .color-red { background-color: #ff3b30; visibility: visible; }
-        .color-yellow { background-color: #ffcc00; visibility: visible; }
-        .turn-indicator { font-size: 14px; color: #4a5568; margin-bottom: 4px; }
-        .visits-indicator { font-size: 15px; font-weight: bold; color: #1a202c; }
+        .session-tally { font-size: 12px; color: #cbd5e1; font-weight: bold; background: #334155; padding: 2px 6px; }
+        .foul-tally { font-size: 12px; color: #ffffff; font-weight: bold; background: #ea580c; padding: 2px 6px; }
+        .color-indicator { width: 12px; height: 12px; display: inline-block; visibility: hidden; border: 1px solid #000; }
+        .color-red { background-color: #ef4444; visibility: visible; }
+        .color-yellow { background-color: #eab308; visibility: visible; }
+        .turn-indicator { font-size: 13px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+        .visits-indicator { font-size: 16px; font-weight: 800; color: #38bdf8; }
         
-        .ball-rack-container { background: #1e293b; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
-        .ball-rack-title { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .ball-rack-row { display: flex; justify-content: center; gap: 8px; min-height: 24px; align-items: center; margin-bottom: 8px; }
-        .rack-ball { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.4); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2); transition: opacity 0.2s, transform 0.2s; }
-        .rack-ball.potted { opacity: 0.15; transform: scale(0.85); box-shadow: none; border: 1px dashed rgba(255,255,255,0.2); }
-        .rack-red { background: radial-gradient(circle at 7px 7px, #ff6b6b, #cc0000); }
-        .rack-yellow { background: radial-gradient(circle at 7px 7px, #ffeb3b, #c5a000); }
+        .ball-rack-container { background: #0f172a; border: 1px solid #334155; padding: 8px; margin-bottom: 8px; text-align: center; }
+        .ball-rack-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+        .ball-rack-row { display: flex; justify-content: center; gap: 6px; min-height: 24px; align-items: center; margin-bottom: 8px; }
+        .rack-ball { width: 20px; height: 20px; border: 1px solid #000; transition: opacity 0.2s; }
+        .rack-ball.potted { opacity: 0.1; border: 1px dashed #475569; background: transparent !important; }
+        .rack-red { background: #ef4444; }
+        .rack-yellow { background: #eab308; }
         
-        .rack-adjustments { display: flex; justify-content: space-around; gap: 10px; }
-        .adj-btn { background: #334155; color: #cbd5e1; border: none; padding: 6px 16px; font-size: 11px; font-weight: bold; border-radius: 4px; cursor: pointer; }
-        .adj-btn:active { background: #475569; }
+        .rack-adjustments { display: flex; gap: 8px; }
+        .adj-btn { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 8px; font-size: 12px; font-weight: bold; cursor: pointer; flex: 1; }
+        .adj-btn:active { background: #334155; color: #fff; }
 
-        .section-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: #fff; }
-        .section-title { font-size: 12px; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 15px; background-color: #fff; }
-        .color-assign-box { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: center; }
-        .color-assign-title { font-size: 15px; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; }
-        .color-btn-group { display: flex; gap: 10px; }
-        .color-assign-btn { flex: 1; padding: 12px; border: none; border-radius: 20px; font-weight: bold; font-size: 14px; text-transform: uppercase; color: white; }
-        .btn-claim-red { background-color: #ff3b30; }
-        .btn-claim-yellow { background-color: #ffcc00; color: #1e293b; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        button { width: 100%; padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; }
-        .btn-pot { background-color: #34c759; }
-        .btn-miss { background-color: #ff3b30; }
-        .btn-foul { background-color: #ff9500; color: white; font-weight: bold; margin-bottom: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .btn-win { background-color: #000000; color: #ffffff; font-weight: 800; text-transform: uppercase; border: 2px solid #333; margin-bottom: 6px; }
-        .log-box { width: 100%; height: 75px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; font-size: 13px; background: #f8f9fa; overflow-y: auto; color: #475569; }
-        .footer-actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-undo { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
-        .btn-new { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 13px; padding: 8px; }
+        .section-box { border: 1px solid #334155; padding: 10px; margin-bottom: 8px; background: #0f172a; }
+        .section-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        select { width: 100%; padding: 10px; border: 1px solid #334155; font-size: 14px; background-color: #1e293b; color: #fff; height: 40px; }
         
-        .auth-section { margin-top: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 8px; text-align: center; }
-        .auth-input { width: 100%; padding: 8px; margin-bottom: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; }
-        .auth-btn { background: #475569; padding: 8px; font-size: 13px; border-radius: 4px; }
+        .color-assign-box { background: #0f172a; border: 1px solid #334155; padding: 10px; margin-bottom: 8px; text-align: center; }
+        .color-assign-title { font-size: 13px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; }
+        .color-btn-group { display: flex; gap: 8px; }
+        .color-assign-btn { flex: 1; padding: 12px; border: none; font-weight: bold; font-size: 13px; text-transform: uppercase; color: white; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; width: 100%; }
+        
+        button { width: 100%; padding: 14px 8px; font-size: 14px; font-weight: 800; border: none; cursor: pointer; color: white; text-transform: uppercase; }
+        
+        .btn-pot { background-color: #10b981; }
+        .btn-pot:active { background-color: #059669; }
+        .btn-miss { background-color: #ef4444; }
+        .btn-miss:active { background-color: #dc2626; }
+        
+        .btn-foul { background-color: #f97316; font-size: 11px; padding: 12px 2px; line-height: 1.2; width: 100%; }
+        .btn-foul:active { background-color: #ea580c; }
+        
+        .btn-win { background-color: #000000; border: 1px solid #334155; font-size: 12px; margin-bottom: 8px; color: #ffffff; }
+        .btn-win:active { background-color: #1e293b; }
+        .btn-loss { background-color: #4b5563; border: 1px solid #475569; font-size: 11px; margin-bottom: 8px; color: #ffffff; }
+        .btn-loss:active { background-color: #374151; }
+        
+        .log-box { width: 100%; height: 70px; border: 1px solid #334155; padding: 6px; font-size: 12px; background: #0f172a; overflow-y: auto; color: #94a3b8; }
+        .footer-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-undo { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 12px; padding: 10px; }
+        .btn-undo:active { background-color: #334155; }
+        .btn-new { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 12px; padding: 10px; }
+        .btn-new:active { background-color: #334155; }
+        
+        .auth-section { margin-top: 15px; background: #0f172a; border: 1px dashed #334155; padding: 10px; text-align: center; }
+        .auth-input { width: 100%; padding: 8px; margin-bottom: 6px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 13px; }
+        .auth-btn { background: #334155; padding: 8px; font-size: 12px; }
         .auth-status { font-size: 11px; margin-top: 4px; font-weight: bold; }
     </style>
 </head>
@@ -67,7 +82,7 @@
     <div class="scoreboard">
         <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
         <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
-        <hr style="border: 0; border-top: 1px solid #e9ecef; margin: 8px 0;">
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 6px 0;">
         <div class="score-row">
             <div class="player-info">
                 <span id="p1-name-display">Ginge</span>
@@ -101,12 +116,24 @@
             <select id="p1-select" onchange="updatePlayerNames()">
                 <option value="Ginge">Ginge</option>
                 <option value="Schmidty">Schmidty</option>
+                <option value="Ethan">Ethan</option>
+                <option value="Jon">Jon</option>
+                <option value="Cal">Cal</option>
+                <option value="Aid">Aid</option>
+                <option value="Mitch">Mitch</option>
+                <option value="Rawlins">Rawlins</option>
                 <option value="Guest 1">Guest 1</option>
                 <option value="Guest 2">Guest 2</option>
             </select>
             <select id="p2-select" onchange="updatePlayerNames()">
                 <option value="Schmidty">Schmidty</option>
                 <option value="Ginge">Ginge</option>
+                <option value="Ethan">Ethan</option>
+                <option value="Jon">Jon</option>
+                <option value="Cal">Cal</option>
+                <option value="Aid">Aid</option>
+                <option value="Mitch">Mitch</option>
+                <option value="Rawlins">Rawlins</option>
                 <option value="Guest 1">Guest 1</option>
                 <option value="Guest 2">Guest 2</option>
             </select>
@@ -131,23 +158,27 @@
         <div class="log-box" id="log-box">Select who breaks to begin tracking.</div>
     </div>
 
-    <div id="controls-section" style="pointer-events: none; opacity: 0.5;">
+    <div id="controls-section" style="pointer-events: none; opacity: 0.4;">
         <div class="section-title">Controls</div>
         <div class="grid-2">
             <button class="btn-pot" onclick="logShot('Pot')">Ball Potted</button>
             <button class="btn-miss" onclick="logShot('Miss')">Miss</button>
         </div>
         
-        <button class="btn-foul" onclick="logShot('Foul - Potted White')">Foul (Potted White)</button>
-        <button class="btn-foul" onclick="logShot('Foul - No Hit')">Foul (No Hit/Wrong Ball)</button>
-        <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul (Opponent Potted)</button>
+        <div class="grid-3">
+            <button class="btn-foul" onclick="logShot('Foul - Potted White')">Foul<br>(White)</button>
+            <button class="btn-foul" onclick="logShot('Foul - No Hit')">Foul<br>(No Hit)</button>
+            <button class="btn-foul" onclick="logShot('Foul - Opponent Potted')">Foul<br>(Opp Pot)</button>
+        </div>
         
-        <button class="btn-win" onclick="logShot('Pot Black')">Pot Black</button>
-        <button class="btn-win" style="background-color: #4b5563;" onclick="logShot('Loss of Frame - Potted Black and White')">Pot Black + White (Loss)</button>
+        <div class="grid-2">
+            <button class="btn-win" onclick="logShot('Pot Black')">Pot Black (Win)</button>
+            <button class="btn-loss" onclick="logShot('Loss of Frame - Potted Black and White')">Black + White (Loss)</button>
+        </div>
     </div>
 
     <div class="footer-actions">
-        <button class="btn-undo" onclick="undoLastShot()" style="opacity: 0.5; pointer-events: none;" id="undo-btn"><= Undo Mistake</button>
+        <button class="btn-undo" onclick="undoLastShot()" style="opacity: 0.4; pointer-events: none;" id="undo-btn"><= Undo</button>
         <button class="btn-new" onclick="resetContainer()">New Game</button>
     </div>
 
@@ -159,8 +190,8 @@
             <button class="auth-btn" onclick="handleLogin()">Connect Table</button>
         </div>
         <div id="auth-logged-in" style="display: none;">
-            <span style="color: #16a34a; font-size: 13px; font-weight: bold;">✓ Live Scoring Connected</span>
-            <button class="auth-btn" style="background: #ef4444; padding: 2px 6px; font-size: 11px; margin-left: 6px; width: auto; display: inline-block;" onclick="handleLogout()">Disconnect</button>
+            <span style="color: #4ade80; font-size: 13px; font-weight: bold;">✓ Live Scoring Connected</span>
+            <button class="auth-btn" style="background: #f87171; padding: 2px 6px; font-size: 11px; margin-left: 6px; width: auto; display: inline-block;" onclick="handleLogout()">Disconnect</button>
         </div>
         <div class="auth-status" id="auth-status-msg" style="color: #64748b;">Public Offline View</div>
     </div>
@@ -204,7 +235,7 @@
             btn.style.opacity = "1";
             btn.style.pointerEvents = "auto";
         } else {
-            btn.style.opacity = "0.5";
+            btn.style.opacity = "0.4";
             btn.style.pointerEvents = "none";
         }
     }
@@ -263,7 +294,6 @@
                 return;
             }
 
-            // Save both the token and a programmatic tracking timestamp for internal session control
             localStorage.setItem("pool_tracker_token", data.access_token);
             localStorage.setItem("pool_tracker_authenticated_at", Math.floor(Date.now() / 1000).toString());
             showLoggedInState();
@@ -278,7 +308,7 @@
         document.getElementById('auth-logged-in').style.display = "block";
         const msg = document.getElementById('auth-status-msg');
         msg.innerText = "Write Access Enabled";
-        msg.style.color = "#16a34a";
+        msg.style.color = "#4ade80";
     }
 
     function handleLogout() {
@@ -317,15 +347,14 @@
         }
         localStorage.setItem("pool_session_date", currentDateStr);
 
-        // Code-Level Automated Security Lifespan Check (Plan B)
         const token = localStorage.getItem("pool_tracker_token");
         const authTimestamp = localStorage.getItem("pool_tracker_authenticated_at");
         
         if (token && authTimestamp) {
             const loginTime = parseInt(authTimestamp, 10);
             const currentTime = Math.floor(Date.now() / 1000);
-            const extendedExpirySeconds = 604799; // Corresponds with Supabase backend configuration threshold
-            const safetyBuffer = 43200; // 12-hour closing verification barrier
+            const extendedExpirySeconds = 604799; 
+            const safetyBuffer = 43200; 
             
             if ((loginTime + extendedExpirySeconds) - currentTime < safetyBuffer) {
                 console.log("Database token entering critical security expiration window. Cleaning local authorization state.");
@@ -421,7 +450,7 @@
     }
 
     function breakPotAdjust(color, amount) {
-        if (amount > 0) return; // Disregard positive additions entirely per request
+        if (amount > 0) return; 
         
         captureHistorySnapshot("Pot on Break - " + color);
 
@@ -543,7 +572,7 @@
             recordSessionWin(frameWinner, frameLoser);
 
             document.getElementById('controls-section').style.pointerEvents = "none";
-            document.getElementById('controls-section').style.opacity = "0.5";
+            document.getElementById('controls-section').style.opacity = "0.4";
             document.getElementById('setup-section').style.display = "block";
             document.getElementById('visual-rack').style.display = "none";
             document.getElementById('p1-fouls').style.display = "none";
@@ -717,7 +746,6 @@
             showLoggedInState();
         }
 
-        // Set up background monitoring engine to verify session health every 60 seconds
         setInterval(checkSessionExpiry, 60000);
     };
 </script>
