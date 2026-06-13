@@ -6,72 +6,72 @@
     <title>Pool Tracker</title>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: #0f172a; margin: 0; padding: 8px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
-        .container { width: 100%; max-width: 450px; background: #1e293b; padding: 12px; border: 1px solid #334155; }
-        h2 { text-align: center; margin: 0 0 10px 0; font-size: 18px; color: #f8fafc; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        body { background-color: #0f172a; margin: 0; padding: 4px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
+        .container { width: 100%; max-width: 450px; background: #1e293b; padding: 6px; border: 1px solid #334155; }
+        h2 { text-align: center; margin: 0 0 6px 0; font-size: 16px; color: #f8fafc; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .scoreboard { background: #0f172a; border: 1px solid #334155; padding: 10px; margin-bottom: 8px; text-align: center; }
-        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-size: 15px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; }
+        .scoreboard { background: #0f172a; border: 1px solid #334155; padding: 6px; margin-bottom: 4px; text-align: center; }
+        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; }
         .score-row:last-child { border-bottom: none; }
-        .player-info { display: flex; align-items: center; gap: 8px; }
-        .session-tally { font-size: 12px; color: #cbd5e1; font-weight: bold; background: #334155; padding: 2px 6px; }
-        .foul-tally { font-size: 12px; color: #ffffff; font-weight: bold; background: #ea580c; padding: 2px 6px; }
-        .color-indicator { width: 12px; height: 12px; display: inline-block; visibility: hidden; border: 1px solid #000; }
+        .player-info { display: flex; align-items: center; gap: 6px; }
+        .session-tally { font-size: 11px; color: #cbd5e1; font-weight: bold; background: #334155; padding: 1px 4px; }
+        .foul-tally { font-size: 11px; color: #ffffff; font-weight: bold; background: #ea580c; padding: 1px 4px; }
+        .color-indicator { width: 10px; height: 10px; display: inline-block; visibility: hidden; border: 1px solid #000; }
         .color-red { background-color: #ef4444; visibility: visible; }
         .color-yellow { background-color: #eab308; visibility: visible; }
-        .turn-indicator { font-size: 13px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
-        .visits-indicator { font-size: 16px; font-weight: 800; color: #38bdf8; }
+        .turn-indicator { font-size: 12px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1px; }
+        .visits-indicator { font-size: 14px; font-weight: 800; color: #38bdf8; }
         
-        .ball-rack-container { background: #0f172a; border: 1px solid #334155; padding: 8px; margin-bottom: 8px; text-align: center; }
-        .ball-rack-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
-        .ball-rack-row { display: flex; justify-content: center; gap: 6px; min-height: 24px; align-items: center; margin-bottom: 8px; }
-        .rack-ball { width: 20px; height: 20px; border: 1px solid #000; transition: opacity 0.2s; }
+        .ball-rack-container { background: #0f172a; border: 1px solid #334155; padding: 6px; margin-bottom: 4px; text-align: center; }
+        .ball-rack-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+        .ball-rack-row { display: flex; justify-content: center; gap: 4px; min-height: 20px; align-items: center; margin-bottom: 6px; }
+        .rack-ball { width: 18px; height: 18px; border: 1px solid #000; transition: opacity 0.2s; }
         .rack-ball.potted { opacity: 0.1; border: 1px dashed #475569; background: transparent !important; }
         .rack-red { background: #ef4444; }
         .rack-yellow { background: #eab308; }
         
-        .rack-adjustments { display: flex; gap: 8px; }
-        .adj-btn { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 8px; font-size: 12px; font-weight: bold; cursor: pointer; flex: 1; }
+        .rack-adjustments { display: flex; gap: 6px; }
+        .adj-btn { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex: 1; }
         .adj-btn:active { background: #334155; color: #fff; }
 
-        .section-box { border: 1px solid #334155; padding: 10px; margin-bottom: 8px; background: #0f172a; }
-        .section-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        select { width: 100%; padding: 10px; border: 1px solid #334155; font-size: 14px; background-color: #1e293b; color: #fff; height: 40px; }
+        .section-box { border: 1px solid #334155; padding: 6px; margin-bottom: 4px; background: #0f172a; }
+        .section-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+        select { width: 100%; padding: 6px; border: 1px solid #334155; font-size: 13px; background-color: #1e293b; color: #fff; height: 36px; }
         
-        .color-assign-box { background: #0f172a; border: 1px solid #334155; padding: 10px; margin-bottom: 8px; text-align: center; }
-        .color-assign-title { font-size: 13px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; }
-        .color-btn-group { display: flex; gap: 8px; }
-        .color-assign-btn { flex: 1; padding: 12px; border: none; font-weight: bold; font-size: 13px; text-transform: uppercase; color: white; }
+        .color-assign-box { background: #0f172a; border: 1px solid #334155; padding: 8px; margin-bottom: 4px; text-align: center; }
+        .color-assign-title { font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+        .color-btn-group { display: flex; gap: 6px; }
+        .color-assign-btn { flex: 1; padding: 10px; border: none; font-weight: bold; font-size: 12px; text-transform: uppercase; color: white; }
         
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; width: 100%; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 4px; width: 100%; }
         
-        button { width: 100%; padding: 14px 8px; font-size: 14px; font-weight: 800; border: none; cursor: pointer; color: white; text-transform: uppercase; }
+        button { width: 100%; padding: 12px 6px; font-size: 13px; font-weight: 800; border: none; cursor: pointer; color: white; text-transform: uppercase; }
         
         .btn-pot { background-color: #10b981; }
         .btn-pot:active { background-color: #059669; }
         .btn-miss { background-color: #ef4444; }
         .btn-miss:active { background-color: #dc2626; }
         
-        .btn-foul { background-color: #f97316; font-size: 11px; padding: 12px 2px; line-height: 1.2; width: 100%; }
+        .btn-foul { background-color: #f97316; font-size: 10px; padding: 10px 2px; line-height: 1.1; width: 100%; }
         .btn-foul:active { background-color: #ea580c; }
         
-        .btn-win { background-color: #000000; border: 1px solid #334155; font-size: 12px; margin-bottom: 8px; color: #ffffff; }
+        .btn-win { background-color: #000000; border: 1px solid #334155; font-size: 11px; }
         .btn-win:active { background-color: #1e293b; }
-        .btn-loss { background-color: #4b5563; border: 1px solid #475569; font-size: 11px; margin-bottom: 8px; color: #ffffff; }
+        .btn-loss { background-color: #4b5563; border: 1px solid #475569; font-size: 10px; }
         .btn-loss:active { background-color: #374151; }
         
-        .log-box { width: 100%; height: 70px; border: 1px solid #334155; padding: 6px; font-size: 12px; background: #0f172a; overflow-y: auto; color: #94a3b8; }
-        .footer-actions { display: flex; gap: 8px; margin-top: 8px; }
-        .btn-undo { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 12px; padding: 10px; }
+        .log-box { width: 100%; height: 70px; border: 1px solid #334155; padding: 4px; font-size: 11px; background: #0f172a; overflow-y: auto; color: #94a3b8; }
+        .footer-actions { display: flex; gap: 6px; margin-top: 4px; }
+        .btn-undo { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 11px; padding: 8px; }
         .btn-undo:active { background-color: #334155; }
-        .btn-new { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 12px; padding: 10px; }
+        .btn-new { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-size: 11px; padding: 8px; }
         .btn-new:active { background-color: #334155; }
         
-        .auth-section { margin-top: 15px; background: #0f172a; border: 1px dashed #334155; padding: 10px; text-align: center; }
-        .auth-input { width: 100%; padding: 8px; margin-bottom: 6px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 13px; }
-        .auth-btn { background: #334155; padding: 8px; font-size: 12px; }
-        .auth-status { font-size: 11px; margin-top: 4px; font-weight: bold; }
+        .auth-section { margin-top: 10px; background: #0f172a; border: 1px dashed #334155; padding: 8px; text-align: center; }
+        .auth-input { width: 100%; padding: 6px; margin-bottom: 4px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 12px; }
+        .auth-btn { background: #334155; padding: 6px; font-size: 11px; }
+        .auth-status { font-size: 10px; margin-top: 2px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -82,7 +82,7 @@
     <div class="scoreboard">
         <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
         <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
-        <hr style="border: 0; border-top: 1px solid #334155; margin: 6px 0;">
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 4px 0;">
         <div class="score-row">
             <div class="player-info">
                 <span id="p1-name-display">Ginge</span>
@@ -112,7 +112,7 @@
 
     <div class="section-box" id="setup-section">
         <div class="section-title">Match Setup</div>
-        <div class="grid-2" style="margin-bottom: 6px;">
+        <div class="grid-2" style="margin-bottom: 4px;">
             <select id="p1-select" onchange="updatePlayerNames()">
                 <option value="Ginge">Ginge</option>
                 <option value="Schmidty">Schmidty</option>
