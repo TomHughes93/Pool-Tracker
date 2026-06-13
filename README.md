@@ -1,65 +1,59 @@
-# Cloud-Connected Sports Analytics Engine: Mobile Field Tracker to Power BI
+Cloud-Connected Pool Analytics Engine: Mobile Field Tracker to Power BI
+Executive Summary
 
-## Executive Summary
+In amateur pool tracking, field data collection is traditionally plagued by friction. Manual chalk tallies on a slate, clunky generic spreadsheets, and standard scoring applications fail in high-frequency, real-world pub environments. This project resolves that operational friction by deploying a custom, mobile-first web application engineered specifically for rapid, high-impact touch logging right at the side of the table.
 
-In amateur sports tracking, field data collection is traditionally plagued by friction. Manual paper tallies, clunky spreadsheets, and generic scoring applications fail in high-frequency, real-world environments like a busy pub. This project resolves that operational friction by deploying a custom, mobile-first web application engineered specifically for quick, high-impact touch logging.
-
-The edge application functions as a live data collection tool, transmitting transactional game metrics directly to a hosted PostgreSQL cloud data warehouse upon frame completion. This data pipeline feeds an analytical Power BI dashboard, converting raw table actions into structured performance diagnostics, player form trends, and tactical error analysis.
-
----
-
-## System Architecture & Data Pipeline
+The edge application functions as a live pool data collection tool, transmitting transactional frame metrics directly to a hosted PostgreSQL cloud data warehouse upon frame completion. This data pipeline completely bypasses manual data entry, feeding an analytical Power BI dashboard that converts raw table actions into structured performance diagnostics, player form trends, and tactical error analysis.
+System Architecture & Data Pipeline
 
 The end-to-end data pipeline is structured into three decoupled layers to ensure scalability and data integrity:
+Plaintext
 
-```text
 [ Edge App: HTML5/JS ] ---> ( REST API Gateway ) ---> [ Cloud DB: Supabase / Postgres ] ---> [ BI Layer: Power BI Desktop ]
 
-```
+    Data Collection Layer (Edge): A lightweight HTML5 web application optimized for mobile viewports. It handles active frame rules, ball counts, and player states locally, utilizing browser localStorage cache fallbacks to ensure zero data loss during temporary network drops.
 
-1. **Data Collection Layer (Edge):** A lightweight HTML5 web application optimized for mobile viewports. It handles active frame state machine logic locally and utilizes browser `localStorage` cache fallbacks to ensure zero data loss during temporary network drops.
-2. **Cloud Storage Layer (Warehouse):** An authenticated REST API gateway transfers the data payloads directly into a hosted Supabase PostgreSQL instance. Database integrity is protected by structural constraints, index configurations, and strict token validation.
-3. **Analytics & Visualization Layer (BI):** Power BI Desktop establishes a secure connection to the cloud database, executing automated transformation scripts via Power Query to model the metrics into user-facing executive dashboards.
+    Cloud Storage Layer (Warehouse): An authenticated REST API gateway transfers the pool data payloads directly into a hosted Supabase PostgreSQL instance. Database integrity is protected by structural constraints, index configurations, and strict token validation.
 
----
+    Analytics & Visualization Layer (BI): Power BI Desktop establishes a secure connection to the cloud database, executing automated transformation scripts via Power Query to model the metrics into user-facing performance dashboards.
 
-## Edge Application Logic & Embedded State Machine
+Edge Application Logic & Pool State Machine
 
-The core challenge of tracking a live match is managing the ruleset seamlessly in the background so the user only has to tap plain results. The application handles this by running an embedded JavaScript state machine that actively computes player states before packaging the database payload.
+The core challenge of tracking a live pool match is managing the ruleset seamlessly in the background so the user can log shots instantly between turns. The application handles this by running an embedded JavaScript state machine that actively computes table states before packaging the database payload.
+1. Dynamic Match Open State
 
-### 1. Dynamic Match Open State
+When a match initiates, the table is flagged as an open table (tableColorsAssigned = false). The application monitors the opening break actions via a specialized tracking buffer:
 
-When a match initiates, the table is flags as `tableColorsAssigned = false`. The application monitors the break actions via a specialized tracking buffer:
+    Pots executed using the break adjustment tools (breakPotAdjust()) increment the break_pots count for the active player but maintain the open table state.
 
-* Pots executed using the break adjustment tools (`breakPotAdjust()`) increment the `break_pots` count for the active player but maintain the open table state.
-* The moment a standard shot is logged, the system executes an automated check. If a color is claimed, it calls `assignTableColors()`, updating the UI indicators and mapping the correct colors to each player object to lock down subsequent ball deductions.
+    The moment a standard shot is logged, the system executes an automated check. If a color is claimed, it calls assignTableColors(), updating the UI indicators and mapping the correct group (Reds or Yellows) to each player object to lock down subsequent ball deductions.
 
-### 2. The Multi-Visit Foul Logic
+2. The Multi-Visit Foul Logic
 
-Handling fouls in amateur pool requires tracking state across multiple turns. The application implements this using a strict `visitsRemaining` state tracker inside `logShot()`:
+Handling amateur pool rules requires tracking player state across multiple table visits. The application implements this using a strict visitsRemaining state tracker inside the core logShot() function:
 
-* **Standard Turn:** A player begins their turn with `visitsRemaining = 1`. A miss toggles the active player and resets visits to 1.
-* **Foul Incurred:** When any of the three foul triggers are tapped (White scratch, No Hit, or Opponent Pot), the system increments the active player's `total_fouls` metric, switches control to the opponent, and aggressively sets `visitsRemaining = 2`.
-* **Foul Turn Management:** On a foul visit, if the incoming player misses on their first attempt, the logic intercepts the standard player switch. It decrements `visitsRemaining` down to 1 but keeps that same player active at the table. Control only switches over if they miss a second consecutive time.
+    Standard Turn: A player begins their turn with visitsRemaining = 1. A standard miss toggles the active player and resets visits to 1.
 
-### 3. Transactional History Stack (The Undo Engine)
+    Foul Incurred: When any of the three specific pool foul triggers are tapped (White scratch, No Hit, or Opponent Ball Potted), the system increments the active player's total_fouls metric, switches control to the opponent, and sets visitsRemaining = 2.
 
-To prevent pub distractions from corrupting data integrity, the app utilizes a strict LIFO (Last-In, First-Out) stack array named `actionHistoryStack`.
+    Foul Turn Management: On a foul visit, if the incoming player misses on their first shot, the logic intercepts the standard player switch. It decrements visitsRemaining down to 1 but keeps that same player active at the table. Control only switches back over if they fail on their second consecutive visit.
 
-* Before any state variable is updated by a button tap, `captureHistorySnapshot()` deep-serializes the entire state of the game (current remaining balls, scores, active player flags, and deep-copied statistics objects) into a JSON string and pushes it to the stack.
-* Tapping the square `<= Undo` button pops the top snapshot off the stack, parses the variables back into live memory, and re-renders the UI elements, maintaining perfect data synchronization.
+3. Transactional History Stack (The Undo Engine)
 
----
+To prevent pub distractions or accidental screen taps from corrupting data integrity, the app utilizes a strict LIFO (Last-In, First-Out) stack array named actionHistoryStack.
 
-## Relational Database Configuration (PostgreSQL / SQL)
+    Before any state variable is updated by a button tap, captureHistorySnapshot() deep-serializes the entire state of the game (current remaining reds/yellows, scores, active player flags, and deep-copied statistics objects) into a JSON string and pushes it to the stack.
+
+    Tapping the square <= Undo button pops the top snapshot off the stack, parses the variables back into live memory, and re-renders the visual ball rack, maintaining perfect data synchronization.
+
+Relational Database Configuration (PostgreSQL / SQL)
 
 The cloud storage layer is powered by a PostgreSQL database hosted on Supabase. Below are the production-grade SQL scripts used to establish the data warehouse architecture, enforce relational constraints, and build analytical data layers.
+1. Base Table Creation: match_summaries
 
-### 1. Base Table Creation: `match_summaries`
+This script defines the physical storage schema, enforcing strict non-nullable fields on key pool metrics to prevent null-pointer calculations during BI ingestion.
+SQL
 
-This script defines the physical storage schema, enforcing strict non-nullable fields on key metrics to prevent null-pointer calculations during BI ingestion.
-
-```sql
 CREATE TABLE public.match_summaries (
     id BIGINT GENERATED BY DEFAULT AS IDENTITY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
@@ -79,13 +73,11 @@ CREATE TABLE public.match_summaries (
 CREATE INDEX idx_match_summaries_player ON public.match_summaries (player_name);
 CREATE INDEX idx_match_summaries_match ON public.match_summaries (match_id);
 
-```
+2. Embedded Server-Side Views (Aggregated Metrics)
 
-### 2. Embedded Server-Side Views (Aggregated Metrics)
+To showcase true database layer engineering, we configured an optimized server-side view. This allows thin reporting clients or direct analytical SQL queries to pull pre-aggregated pool performance metrics straight from the server without wasting processing power recalculating rows at the application level.
+SQL
 
-To showcase true database layer engineering, we configured an optimized server-side view. This allows thin reporting clients or analytical queries to pull pre-aggregated performance data directly from the server without wasting processing power recalculating rows at the application level.
-
-```sql
 CREATE OR REPLACE VIEW public.vw_player_career_metrics AS
 SELECT 
     player_name,
@@ -129,17 +121,12 @@ FROM
 GROUP BY 
     player_name;
 
-```
+Power BI Data Model & DAX Design
 
----
+When pulling data straight from the PostgreSQL cloud instance into Power BI, the application establishes a formal star schema model. A dedicated time dimension table (Dim_Calendar) is generated via DAX to isolate chronological trend tracking from raw logs.
+Dim_Calendar Generation
+Code snippet
 
-## Power BI Data Model & DAX Design
-
-When pulling data straight from the PostgreSQL cloud instance into Power BI, the application establishes a formal star schema model. A dedicated time dimension table (`Dim_Calendar`) is generated via DAX to isolate temporal tracking from raw logs.
-
-### Dim_Calendar Generation
-
-```dax
 Dim_Calendar = 
 VAR BaseCalendar = CALENDAR(MIN(match_summaries[created_at]), MAX(match_summaries[created_at]))
 RETURN
@@ -152,17 +139,14 @@ ADDCOLUMNS(
     "DayOfWeek", FORMAT([Date], "DDDD")
 )
 
-```
+Core Pool Performance Measures
 
-### Core Business Intelligence Measures
+To evaluate actual player quality during performance analysis, the data model converts the raw fact columns into precise analytical rates using Data Analysis Expressions (DAX). These formulas explicitly handle edge cases, such as zero-shot frames, to maintain strict mathematical accuracy across the dataset.
+Potting Accuracy Percentage
 
-To evaluate actual player quality during performance analysis, the data model converts the raw fact columns into precise analytical rates using Data Analysis Expressions (DAX):
+Determines overall shot precision by calculating successful pots against total table appearances.
+Code snippet
 
-#### Potting Accuracy Percentage
-
-Determines overall shot precision by calculating successful pots against total shot volume.
-
-```dax
 Potting Accuracy = 
 DIVIDE(
     SUM(match_summaries[total_shots]) - SUM(match_summaries[total_misses]), 
@@ -170,13 +154,11 @@ DIVIDE(
     0
 )
 
-```
+Pots Per Visit Average
 
-#### Pots Per Visit Average
+Measures offensive run efficiency by dividing successful clearances by total defensive turnovers (misses) and frame completions (wins). This isolates who maximizes their time at the table.
+Code snippet
 
-Measures offensive run efficiency by dividing successful clearances by total defensive turnovers (misses) and frame completions (wins).
-
-```dax
 Pots Per Visit = 
 DIVIDE(
     SUM(match_summaries[total_shots]) - SUM(match_summaries[total_misses]), 
@@ -184,13 +166,11 @@ DIVIDE(
     0
 )
 
-```
+Average Visits Per Frame
 
-#### Average Visits Per Frame
+Establishes match pace and table control by measuring the average number of visits required to completely clear the table and pot the black.
+Code snippet
 
-Establishes match pace and defensive tightness by measuring the average number of table visits required to conclude a frame.
-
-```dax
 Avg Visits Per Frame = 
 DIVIDE(
     SUM(match_summaries[total_misses]) + CALCULATE(COUNTROWS(match_summaries), match_summaries[is_winner] = TRUE),
@@ -198,14 +178,24 @@ DIVIDE(
     0
 )
 
-```
+Foul Frequency Rate
 
----
+Monitors tactical discipline by tracking how frequently a player commits a foul relative to their total volume of shots taken.
+Code snippet
 
-## Portfolio Presentation Blueprint
+Foul Frequency = 
+DIVIDE(
+    SUM(match_summaries[total_fouls]), 
+    SUM(match_summaries[total_shots]), 
+    0
+)
+
+Portfolio Presentation Blueprint
 
 When presenting this complete architecture to hiring managers or technical interviewers, structure your project walkthrough around these three software engineering pillars:
 
-* **Edge State Reliability:** Explain how you built a robust, real-world state machine in vanilla JavaScript. Walk through the logic that accurately manages multi-visit foul structures and a LIFO memory stack to handle real-time user errors or connectivity drops seamlessly.
-* **Full-Stack Pipeline Engineering:** Highlight that you avoided the amateur approach of using intermediate csv files. Demonstrate how you configured a production-ready cloud pipeline that uses web interfaces to write clean JSON data directly to a hosted SQL engine via an API gateway.
-* **Database Optimization vs Model Translation:** Prove your understanding of efficient query architecture. Explain why you implemented server-side SQL views for heavy, high-level group aggregations, while utilizing client-side Power BI DAX modeling for complex filter-context variables like dynamic head-to-head ratios.
+    Edge State Reliability: Explain how you built a robust pool rules engine in vanilla JavaScript. Walk through the logic that accurately manages multi-visit foul structures and a LIFO memory stack to handle real-time user errors or connectivity drops seamlessly without corrupting the active rack state.
+
+    Full-Stack Pipeline Engineering: Highlight that you avoided the amateur approach of using static spreadsheets. Demonstrate how you configured a production-ready cloud pipeline that uses web interfaces to write clean transactional data directly to a hosted SQL engine via an API gateway.
+
+    Database Optimization vs Model Translation: Prove your understanding of efficient query architecture. Explain why you implemented server-side SQL views for heavy, career-level group aggregations, while utilizing client-side Power BI DAX modeling for dynamic, filter-context variables like specific head-to-head ratios.
