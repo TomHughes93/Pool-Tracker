@@ -1,9 +1,3 @@
-You are entirely right. The initial draft focused purely on the Power BI side of things and missed the core of your data engineering work. To make this an effective portfolio piece, we need to show off the actual PostgreSQL backend configuration, your custom database functions, and the precise state machine logic we wrote to handle complex rules like the two-visit foul system on your phone.
-
-I have expanded the documentation into a comprehensive engineering case study. It now includes your exact table creation scripts, the automated metric views, and the complete data flow logic built into the application.
-
----
-
 # Cloud-Connected Sports Analytics Engine: Mobile Field Tracker to Power BI
 
 ## Executive Summary
