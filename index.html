@@ -12,7 +12,7 @@
         h2 { text-align: center; margin: 0 0 4px 0; font-size: 15px; color: #f8fafc; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
         
         .scoreboard { background: #0f172a; border: 1px solid #334155; padding: 6px; margin-bottom: 2px; text-align: center; }
-        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 4px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; }
+        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; transition: all 0.2s ease; }
         .score-row:last-child { border-bottom: none; }
         .player-info { display: flex; align-items: center; gap: 4px; }
         .session-tally { font-size: 11px; color: #cbd5e1; font-weight: bold; background: #334155; padding: 1px 3px; }
@@ -23,6 +23,11 @@
         .turn-indicator { font-size: 13px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1px; }
         .visits-indicator { font-size: 15px; font-weight: 800; color: #38bdf8; }
         
+        /* Highlight styling for active player tracking visibility */
+        .active-player-highlight { color: #4ade80 !important; font-size: 16px !important; font-weight: 900 !important; text-shadow: 0 0 8px rgba(74, 222, 128, 0.4); }
+        .active-player-highlight::before { content: "▶ "; color: #4ade80; animation: pulse 1s infinite alternate; }
+        @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
         .ball-rack-container { background: #0f172a; border: 1px solid #334155; padding: 4px; margin-bottom: 2px; text-align: center; }
         .ball-rack-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
         .ball-rack-row { display: flex; justify-content: center; gap: 3px; min-height: 18px; align-items: center; margin-bottom: 4px; }
@@ -87,6 +92,8 @@
         .auth-input { width: 100%; padding: 6px; margin-bottom: 2px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 12px; }
         .auth-btn { background: #334155; padding: 6px; font-size: 11px; }
         .auth-status { font-size: 10px; margin-top: 2px; font-weight: bold; }
+        
+        .quick-bypass-box { margin-top: 6px; border: 1px solid #ea580c; background: #1e1b18; padding: 4px; text-align: left; }
     </style>
 </head>
 <body>
@@ -98,7 +105,7 @@
         <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
         <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
         <hr style="border: 0; border-top: 1px solid #334155; margin: 4px 0;">
-        <div class="score-row">
+        <div class="score-row" id="p1-row">
             <div class="player-info">
                 <span id="p1-name-display">Ginge</span>
                 <span class="session-tally" id="p1-tally">0W - 0L</span>
@@ -106,7 +113,7 @@
             </div>
             <span class="color-indicator" id="p1-color-dot"></span>
         </div>
-        <div class="score-row">
+        <div class="score-row" id="p2-row">
             <div class="player-info">
                 <span id="p2-name-display">Schmidty</span>
                 <span class="session-tally" id="p2-tally">0W - 0L</span>
@@ -131,6 +138,7 @@
             <select id="p1-select" onchange="updatePlayerNames()">
                 <option value="Ginge">Ginge</option>
                 <option value="Schmidty">Schmidty</option>
+                <option value="Matt">Matt</option>
                 <option value="Ethan">Ethan</option>
                 <option value="Jon">Jon</option>
                 <option value="Cal">Cal</option>
@@ -143,6 +151,7 @@
             <select id="p2-select" onchange="updatePlayerNames()">
                 <option value="Schmidty">Schmidty</option>
                 <option value="Ginge">Ginge</option>
+                <option value="Matt">Matt</option>
                 <option value="Ethan">Ethan</option>
                 <option value="Jon">Jon</option>
                 <option value="Cal">Cal</option>
@@ -207,12 +216,8 @@
                 <canvas id="chart-wins" height="140"></canvas>
             </div>
             <div class="chart-box">
-                <div class="chart-title">Pot Accuracy & Pots Per Visit</div>
-                <canvas id="chart-accuracy" height="160"></canvas>
-            </div>
-            <div class="chart-box">
-                <div class="chart-title">Average Visits & Foul Frequency</div>
-                <canvas id="chart-visits" height="160"></canvas>
+                <div class="chart-title">Performance Metrics Dashboard</div>
+                <canvas id="chart-accuracy" height="180"></canvas>
             </div>
         </div>
     </div>
@@ -232,6 +237,15 @@
         <div id="auth-logged-in" style="display: none;">
             <span style="color: #4ade80; font-size: 13px; font-weight: bold;">✓ Live Scoring Connected</span>
             <button class="auth-btn" style="background: #f87171; padding: 2px 6px; font-size: 11px; margin-left: 6px; width: auto; display: inline-block;" onclick="handleLogout()">Disconnect</button>
+            
+            <div class="quick-bypass-box" id="admin-bypass-ui">
+                <div class="section-title" style="color: #ea580c;">Unrecorded Quick Result Bypass</div>
+                <div class="grid-2" style="margin-bottom: 4px;">
+                    <select id="bypass-winner"></select>
+                    <select id="bypass-loser"></select>
+                </div>
+                <button class="auth-btn" style="background: #ea580c; color: white; width: 100%; padding: 8px;" onclick="submitQuickBypassResult()">Submit Game Results</button>
+            </div>
         </div>
         <div class="auth-status" id="auth-status-msg" style="color: #64748b;">Public Offline View</div>
     </div>
@@ -350,6 +364,7 @@
         const msg = document.getElementById('auth-status-msg');
         msg.innerText = "Write Access Enabled";
         msg.style.color = "#4ade80";
+        populateBypassDropdowns();
     }
 
     function handleLogout() {
@@ -360,6 +375,55 @@
         const msg = document.getElementById('auth-status-msg');
         msg.innerText = "Public Offline View";
         msg.style.color = "#64748b";
+    }
+
+    function populateBypassDropdowns() {
+        const winSelect = document.getElementById('bypass-winner');
+        const loseSelect = document.getElementById('bypass-loser');
+        winSelect.innerHTML = '<option value="">-- Winner --</option>';
+        loseSelect.innerHTML = '<option value="">-- Loser --</option>';
+        
+        const options = document.getElementById('p1-select').options;
+        for(let i=0; i<options.length; i++) {
+            winSelect.innerHTML += `<option value="${options[i].value}">${options[i].text}</option>`;
+            loseSelect.innerHTML += `<option value="${options[i].value}">${options[i].text}</option>`;
+        }
+    }
+
+    async function submitQuickBypassResult() {
+        const winner = document.getElementById('bypass-winner').value;
+        const loser = document.getElementById('bypass-loser').value;
+        
+        if(!winner || !loser || winner === loser) {
+            alert("Please configure two distinct, valid players.");
+            return;
+        }
+        
+        if(!confirm(`Push unrecorded entry showing ${winner} defeating ${loser}?`)) return;
+        
+        const genericBypassId = "bypass_" + Date.now();
+        const payload = [
+            { match_id: genericBypassId, player_name: winner, is_winner: true, total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0, total_fouls: 0 },
+            { match_id: genericBypassId, player_name: loser, is_winner: false, total_shots: 0, total_misses: 0, break_pots: 0, break_misses: 0, total_fouls: 0 }
+        ];
+
+        try {
+            const res = await fetch(`${_supabaseUrl}/rest/v1/match_summaries`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                alert("Game summary bypassed and forced successfully.");
+                recordSessionWin(winner, loser);
+                document.getElementById('bypass-winner').value = "";
+                document.getElementById('bypass-loser').value = "";
+            } else {
+                alert("Database rejected submission payload summary row.");
+            }
+        } catch(e) {
+            alert("Network pipeline execution timeout.");
+        }
     }
 
     function updatePlayerNames() {
@@ -453,9 +517,7 @@
         document.getElementById('visual-rack').style.display = "block";
         renderBallRack();
 
-        document.getElementById('turn-display').innerText = "Turn: " + activePlayer + " (Open Table)";
-        document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
-        
+        updateDisplay();
         addToLog("Match started. " + activePlayer + " is breaking.");
         saveState();
     }
@@ -534,6 +596,18 @@
         }
         document.getElementById('turn-display').innerText = "Turn: " + activePlayer + suffix;
         document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
+
+        // Toggle UI text highlighting context based on identity variables
+        if (activePlayer === player1) {
+            document.getElementById('p1-row').classList.add('active-player-highlight');
+            document.getElementById('p2-row').classList.remove('active-player-highlight');
+        } else if (activePlayer === player2) {
+            document.getElementById('p2-row').classList.add('active-player-highlight');
+            document.getElementById('p1-row').classList.remove('active-player-highlight');
+        } else {
+            document.getElementById('p1-row').classList.remove('active-player-highlight');
+            document.getElementById('p2-row').classList.remove('active-player-highlight');
+        }
     }
 
     function logShot(shotType) {
@@ -563,10 +637,11 @@
             if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
         }
 
+        // Active Player Color remaining calculations to check for final black state configuration
+        let activeColor = playerColors[activePlayer] || "Open Table";
+        let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
+
         if (shotType === 'Pot Black' || shotType === 'Loss of Frame - Potted Black and White') {
-            let activeColor = playerColors[activePlayer] || "Open Table";
-            let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
-            
             isFrameOver = true;
             if (shotType === 'Loss of Frame - Potted Black and White' || activeColor === "Open Table" || remainingCount > 0) {
                 frameWinner = opponent;
@@ -605,6 +680,14 @@
             nextVisits = 2;
         }
 
+        // Hardcoded guard condition intercept to enforce single-visit rule on the black ball
+        let nextPlayerColor = playerColors[nextPlayer] || "Open Table";
+        let nextPlayerRemaining = (nextPlayerColor === "Red") ? redsRemaining : (nextPlayerColor === "Yellow") ? yellowsRemaining : 7;
+        
+        if (tableColorsAssigned && nextPlayerRemaining === 0 && nextVisits > 1) {
+            nextVisits = 1;
+        }
+
         addToLog(activePlayer + " - " + shotType);
         renderBallRack();
 
@@ -629,6 +712,7 @@
             actionHistoryStack = [];
             updateUndoButtonVisibility();
             localStorage.removeItem("pool_tracker_state");
+            updateDisplay();
             return;
         }
 
@@ -765,49 +849,34 @@
             }
         });
 
-        // Safe division logic for metrics calculations
         const getAccuracy = p => aggregation[p].shots ? Math.round(((aggregation[p].shots - aggregation[p].misses) / aggregation[p].shots) * 100) : 0;
         const getPotsPerVisit = p => aggregation[p].total ? ((aggregation[p].shots - aggregation[p].misses) / (aggregation[p].misses + aggregation[p].wins)).toFixed(1) : 0;
         const getAverageVisits = p => aggregation[p].total ? ((aggregation[p].misses + aggregation[p].wins) / aggregation[p].total).toFixed(1) : 0;
         const getFoulFrequency = p => aggregation[p].shots ? (aggregation[p].fouls / aggregation[p].shots).toFixed(2) : 0;
 
-        // Reset tracking objects between tab toggles
         Object.keys(activeCharts).forEach(key => activeCharts[key].destroy());
 
-        // Chart 1: Win/Loss Horizontal Bars
+        // Chart 1: Cleaned Head-to-Head Win Distribution Rows
         activeCharts['wins'] = new Chart(document.getElementById('chart-wins'), {
             type: 'bar',
             data: {
                 labels: [p1, p2],
                 datasets: [{ data: [aggregation[p1].wins, aggregation[p2].wins], backgroundColor: ['#38bdf8', '#a78bfa'] }]
             },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#334155' } } } }
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#334155' }, ticks: { stepSize: 1 } } } }
         });
 
-        // Chart 2: Potting Accuracy & Pots Per Visit Group
+        // Chart 2: Flattened Unified Singular Performance Metrics Visualization Layout Grid
         activeCharts['accuracy'] = new Chart(document.getElementById('chart-accuracy'), {
             type: 'bar',
             data: {
-                labels: ['Accuracy (%)', 'Pots/Visit (x10)'],
+                labels: ['Accuracy (%)', 'Pots/Visit (x10)', 'Avg Visits', 'Fouls/Shot (x100)'],
                 datasets: [
-                    { label: p1, data: [getAccuracy(p1), getPotsPerVisit(p1) * 10], backgroundColor: '#38bdf8' },
-                    { label: p2, data: [getAccuracy(p2), getPotsPerVisit(p2) * 10], backgroundColor: '#a78bfa' }
+                    { label: p1, data: [getAccuracy(p1), getPotsPerVisit(p1) * 10, getAverageVisits(p1), getFoulFrequency(p1) * 100], backgroundColor: '#38bdf8' },
+                    { label: p2, data: [getAccuracy(p2), getPotsPerVisit(p2) * 10, getAverageVisits(p2), getFoulFrequency(p2) * 100], backgroundColor: '#a78bfa' }
                 ]
             },
-            options: { scales: { y: { min: 0, max: 100, grid: { color: '#334155' } } } }
-        });
-
-        // Chart 3: Average Visits & Foul Frequency
-        activeCharts['visits'] = new Chart(document.getElementById('chart-visits'), {
-            type: 'bar',
-            data: {
-                labels: ['Avg Visits', 'Foul Freq (x100)'],
-                datasets: [
-                    { label: p1, data: [getAverageVisits(p1), getFoulFrequency(p1) * 100], backgroundColor: '#38bdf8' },
-                    { label: p2, data: [getAverageVisits(p2), getFoulFrequency(p2) * 100], backgroundColor: '#a78bfa' }
-                ]
-            },
-            options: { scales: { y: { min: 0, grid: { color: '#334155' } } } }
+            options: { responsive: true, scales: { y: { min: 0, grid: { color: '#334155' } } } }
         });
     }
 
