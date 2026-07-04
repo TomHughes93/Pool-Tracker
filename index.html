@@ -851,18 +851,22 @@
 
         const getAccuracy = p => aggregation[p].shots ? Math.round(((aggregation[p].shots - aggregation[p].misses) / aggregation[p].shots) * 100) : 0;
         
+        // Corrected Distinct Calculations
         const getPotsPerVisit = p => {
             const totalVisits = aggregation[p].misses + aggregation[p].wins;
             const totalPots = aggregation[p].shots - aggregation[p].misses;
             return totalVisits ? (totalPots / totalVisits).toFixed(1) : 0;
         };
         
-        const getAverageVisits = p => aggregation[p].total ? ((aggregation[p].misses + aggregation[p].wins) / aggregation[p].total).toFixed(1) : 0;
+        const getAverageVisits = p => {
+            const totalVisits = aggregation[p].misses + aggregation[p].wins;
+            return aggregation[p].total ? (totalVisits / aggregation[p].total).toFixed(1) : 0;
+        };
+        
         const getAverageFouls = p => aggregation[p].total ? (aggregation[p].fouls / aggregation[p].total).toFixed(1) : 0;
 
         Object.keys(activeCharts).forEach(key => activeCharts[key].destroy());
 
-        // Visual 1: Head-to-Head Win Distribution Rows
         activeCharts['wins'] = new Chart(document.getElementById('chart-wins'), {
             type: 'bar',
             data: {
@@ -872,7 +876,6 @@
             options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#334155' }, ticks: { stepSize: 1 } } } }
         });
 
-        // Visual 2: Potting Accuracy (Percentage Scale 0 - 100)
         activeCharts['accuracy'] = new Chart(document.getElementById('chart-accuracy'), {
             type: 'bar',
             data: {
@@ -882,7 +885,6 @@
             options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100, grid: { color: '#334155' } } } }
         });
 
-        // Visual 3: Native Game Averages Group (Visits, Pots/Visit, Fouls) without scaling multiplication factors
         activeCharts['averages'] = new Chart(document.getElementById('chart-averages'), {
             type: 'bar',
             data: {
