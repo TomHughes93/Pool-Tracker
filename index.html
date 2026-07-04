@@ -23,7 +23,6 @@
         .turn-indicator { font-size: 13px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1px; }
         .visits-indicator { font-size: 15px; font-weight: 800; color: #38bdf8; }
         
-        /* Highlight styling for active player tracking visibility */
         .active-player-highlight { color: #4ade80 !important; font-size: 16px !important; font-weight: 900 !important; text-shadow: 0 0 8px rgba(74, 222, 128, 0.4); }
         .active-player-highlight::before { content: "▶ "; color: #4ade80; animation: pulse 1s infinite alternate; }
         @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
@@ -213,11 +212,15 @@
         <div id="stats-charts-wrapper" style="display: none;">
             <div class="chart-box">
                 <div class="chart-title">Head-to-Head Win Distribution</div>
-                <canvas id="chart-wins" height="140"></canvas>
+                <canvas id="chart-wins" height="120"></canvas>
             </div>
             <div class="chart-box">
-                <div class="chart-title">Performance Metrics Dashboard</div>
-                <canvas id="chart-accuracy" height="180"></canvas>
+                <div class="chart-title">Potting Accuracy (%)</div>
+                <canvas id="chart-accuracy" height="120"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">Game Averages & Frequencies</div>
+                <canvas id="chart-averages" height="140"></canvas>
             </div>
         </div>
     </div>
@@ -597,7 +600,6 @@
         document.getElementById('turn-display').innerText = "Turn: " + activePlayer + suffix;
         document.getElementById('visits-display').innerText = "Visits Remaining: " + visitsRemaining;
 
-        // Toggle UI text highlighting context based on identity variables
         if (activePlayer === player1) {
             document.getElementById('p1-row').classList.add('active-player-highlight');
             document.getElementById('p2-row').classList.remove('active-player-highlight');
@@ -637,7 +639,6 @@
             if (activeColor === "Yellow" && yellowsRemaining > 0) yellowsRemaining--;
         }
 
-        // Active Player Color remaining calculations to check for final black state configuration
         let activeColor = playerColors[activePlayer] || "Open Table";
         let remainingCount = (activeColor === "Red") ? redsRemaining : (activeColor === "Yellow") ? yellowsRemaining : 7;
 
@@ -680,7 +681,6 @@
             nextVisits = 2;
         }
 
-        // Hardcoded guard condition intercept to enforce single-visit rule on the black ball
         let nextPlayerColor = playerColors[nextPlayer] || "Open Table";
         let nextPlayerRemaining = (nextPlayerColor === "Red") ? redsRemaining : (nextPlayerColor === "Yellow") ? yellowsRemaining : 7;
         
@@ -850,13 +850,19 @@
         });
 
         const getAccuracy = p => aggregation[p].shots ? Math.round(((aggregation[p].shots - aggregation[p].misses) / aggregation[p].shots) * 100) : 0;
-        const getPotsPerVisit = p => aggregation[p].total ? ((aggregation[p].shots - aggregation[p].misses) / (aggregation[p].misses + aggregation[p].wins)).toFixed(1) : 0;
+        
+        const getPotsPerVisit = p => {
+            const totalVisits = aggregation[p].misses + aggregation[p].wins;
+            const totalPots = aggregation[p].shots - aggregation[p].misses;
+            return totalVisits ? (totalPots / totalVisits).toFixed(1) : 0;
+        };
+        
         const getAverageVisits = p => aggregation[p].total ? ((aggregation[p].misses + aggregation[p].wins) / aggregation[p].total).toFixed(1) : 0;
-        const getFoulFrequency = p => aggregation[p].shots ? (aggregation[p].fouls / aggregation[p].shots).toFixed(2) : 0;
+        const getAverageFouls = p => aggregation[p].total ? (aggregation[p].fouls / aggregation[p].total).toFixed(1) : 0;
 
         Object.keys(activeCharts).forEach(key => activeCharts[key].destroy());
 
-        // Chart 1: Cleaned Head-to-Head Win Distribution Rows
+        // Visual 1: Head-to-Head Win Distribution Rows
         activeCharts['wins'] = new Chart(document.getElementById('chart-wins'), {
             type: 'bar',
             data: {
@@ -866,14 +872,24 @@
             options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#334155' }, ticks: { stepSize: 1 } } } }
         });
 
-        // Chart 2: Flattened Unified Singular Performance Metrics Visualization Layout Grid
+        // Visual 2: Potting Accuracy (Percentage Scale 0 - 100)
         activeCharts['accuracy'] = new Chart(document.getElementById('chart-accuracy'), {
             type: 'bar',
             data: {
-                labels: ['Accuracy (%)', 'Pots/Visit (x10)', 'Avg Visits', 'Fouls/Shot (x100)'],
+                labels: [p1, p2],
+                datasets: [{ data: [getAccuracy(p1), getAccuracy(p2)], backgroundColor: ['#38bdf8', '#a78bfa'] }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100, grid: { color: '#334155' } } } }
+        });
+
+        // Visual 3: Native Game Averages Group (Visits, Pots/Visit, Fouls) without scaling multiplication factors
+        activeCharts['averages'] = new Chart(document.getElementById('chart-averages'), {
+            type: 'bar',
+            data: {
+                labels: ['Pots/Visit', 'Avg Visits/Game', 'Avg Fouls/Game'],
                 datasets: [
-                    { label: p1, data: [getAccuracy(p1), getPotsPerVisit(p1) * 10, getAverageVisits(p1), getFoulFrequency(p1) * 100], backgroundColor: '#38bdf8' },
-                    { label: p2, data: [getAccuracy(p2), getPotsPerVisit(p2) * 10, getAverageVisits(p2), getFoulFrequency(p2) * 100], backgroundColor: '#a78bfa' }
+                    { label: p1, data: [getPotsPerVisit(p1), getAverageVisits(p1), getAverageFouls(p1)], backgroundColor: '#38bdf8' },
+                    { label: p2, data: [getPotsPerVisit(p2), getAverageVisits(p2), getAverageFouls(p2)], backgroundColor: '#a78bfa' }
                 ]
             },
             options: { responsive: true, scales: { y: { min: 0, grid: { color: '#334155' } } } }
