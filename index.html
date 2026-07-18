@@ -12,7 +12,7 @@
         h2 { text-align: center; margin: 0 0 4px 0; font-size: 15px; color: #f8fafc; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
         
         .scoreboard { background: #0f172a; border: 1px solid #334155; padding: 6px; margin-bottom: 2px; text-align: center; }
-        .score-row { display: flex; justify-inline: space-between; justify-content: space-between; align-items: center; padding: 6px 4px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; transition: all 0.2s ease; }
+        .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; transition: all 0.2s ease; }
         .score-row:last-child { border-bottom: none; }
         .player-info { display: flex; align-items: center; gap: 4px; }
         .session-tally { font-size: 11px; color: #cbd5e1; font-weight: bold; background: #334155; padding: 1px 3px; }
@@ -218,12 +218,12 @@
                 <canvas id="chart-wins" height="120"></canvas>
             </div>
             <div class="chart-box">
-                <div class="chart-title">Potting Accuracy (%)</div>
-                <canvas id="chart-accuracy" height="120"></canvas>
+                <div class="chart-title">Potting Metrics (%)</div>
+                <canvas id="chart-accuracy" height="140"></canvas>
             </div>
             <div class="chart-box">
                 <div class="chart-title">Game Averages & Frequencies</div>
-                <canvas id="chart-averages" height="160"></canvas>
+                <canvas id="chart-averages" height="140"></canvas>
             </div>
         </div>
     </div>
@@ -889,18 +889,21 @@
             type: 'bar',
             data: {
                 labels: [p1, p2],
-                datasets: [{ data: [getAccuracy(p1), getAccuracy(p2)], backgroundColor: ['#38bdf8', '#a78bfa'] }]
+                datasets: [
+                    { label: 'General Accuracy', data: [getAccuracy(p1), getAccuracy(p2)], backgroundColor: ['#38bdf8', '#a78bfa'] },
+                    { label: 'Potted on Break', data: [getBreakPotPercentage(p1), getBreakPotPercentage(p2)], backgroundColor: ['#0284c7', '#7c3aed'] }
+                ]
             },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 100, grid: { color: '#334155' } } } }
+            options: { indexAxis: 'y', plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12 } } }, scales: { x: { min: 0, max: 100, grid: { color: '#334155' } } } }
         });
 
         activeCharts['averages'] = new Chart(document.getElementById('chart-averages'), {
             type: 'bar',
             data: {
-                labels: ['Pots/Visit', 'Avg Visits/Game', 'Avg Fouls/Game', 'Potted on Break (%)'],
+                labels: ['Pots/Visit', 'Avg Visits/Game', 'Avg Fouls/Game'],
                 datasets: [
-                    { label: p1, data: [getPotsPerVisit(p1), getAverageVisits(p1), getAverageFouls(p1), getBreakPotPercentage(p1)], backgroundColor: '#38bdf8' },
-                    { label: p2, data: [getPotsPerVisit(p2), getAverageVisits(p2), getAverageFouls(p2), getBreakPotPercentage(p2)], backgroundColor: '#a78bfa' }
+                    { label: p1, data: [getPotsPerVisit(p1), getAverageVisits(p1), getAverageFouls(p1)], backgroundColor: '#38bdf8' },
+                    { label: p2, data: [getPotsPerVisit(p2), getAverageVisits(p2), getAverageFouls(p2)], backgroundColor: '#a78bfa' }
                 ]
             },
             options: { responsive: true, scales: { y: { min: 0, grid: { color: '#334155' } } } }
