@@ -888,13 +888,13 @@
         activeCharts['accuracy'] = new Chart(document.getElementById('chart-accuracy'), {
             type: 'bar',
             data: {
-                labels: [p1, p2],
+                labels: ['General Accuracy', 'Potted on Break'],
                 datasets: [
-                    { label: 'General Accuracy', data: [getAccuracy(p1), getAccuracy(p2)], backgroundColor: ['#38bdf8', '#a78bfa'] },
-                    { label: 'Potted on Break', data: [getBreakPotPercentage(p1), getBreakPotPercentage(p2)], backgroundColor: ['#0284c7', '#7c3aed'] }
+                    { label: p1, data: [getAccuracy(p1), getBreakPotPercentage(p1)], backgroundColor: '#38bdf8' },
+                    { label: p2, data: [getAccuracy(p2), getBreakPotPercentage(p2)], backgroundColor: '#a78bfa' }
                 ]
             },
-            options: { indexAxis: 'y', plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12 } } }, scales: { x: { min: 0, max: 100, grid: { color: '#334155' } } } }
+            options: { responsive: true, scales: { y: { min: 0, max: 100, grid: { color: '#334155' } } } }
         });
 
         activeCharts['averages'] = new Chart(document.getElementById('chart-averages'), {
