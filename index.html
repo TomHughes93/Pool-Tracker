@@ -36,11 +36,8 @@
         .rack-yellow { background: #eab308; }
         
         .rack-adjustments { display: flex; gap: 2px; }
-        .adj-btn { color: #ffffff; border: 1px solid #334155; padding: 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: 1; }
-        .adj-red { background: #fca5a5; color: #7f1d1d; }
-        .adj-red:active { background: #ef4444; color: #ffffff; }
-        .adj-yellow { background: #fef08a; color: #713f12; }
-        .adj-yellow:active { background: #eab308; color: #0f172a; }
+        .adj-btn { background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 10px; font-size: 12px; font-weight: bold; cursor: pointer; flex: 1; }
+        .adj-btn:active { background: #334155; color: #fff; }
 
         .section-box { border: 1px solid #334155; padding: 4px; margin-bottom: 2px; background: #0f172a; }
         .section-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
@@ -129,8 +126,8 @@
         <div class="ball-rack-title" id="rack-title">Remaining Table Balls</div>
         <div class="ball-rack-row" id="ball-row"></div>
         <div class="rack-adjustments">
-            <button class="adj-btn adj-red" onclick="breakPotAdjust('Red', -1)">-1 Red</button>
-            <button class="adj-btn adj-yellow" onclick="breakPotAdjust('Yellow', -1)">-1 Yellow</button>
+            <button class="adj-btn" onclick="breakPotAdjust('Red', -1)">-1 Red</button>
+            <button class="adj-btn" onclick="breakPotAdjust('Yellow', -1)">-1 Yellow</button>
         </div>
     </div>
 
@@ -841,7 +838,15 @@
             [p2]: { wins: 0, total: 0, shots: 0, misses: 0, fouls: 0, break_pots: 0, break_misses: 0 }
         };
 
+        let headToHeadWins = { [p1]: 0, [p2]: 0 };
+
+        // Group rows by match_id to verify true head-to-head encounters
+        let matchGroups = {};
         dataRows.forEach(row => {
+            if (!matchGroups[row.match_id]) matchGroups[row.match_id] = [];
+            matchGroups[row.match_id].push(row);
+
+            // Accumulate overall player totals for the other metrics
             let name = row.player_name;
             if (aggregation[name]) {
                 aggregation[name].total++;
@@ -851,6 +856,18 @@
                 aggregation[name].fouls += (row.total_fouls || 0);
                 aggregation[name].break_pots += (row.break_pots || 0);
                 aggregation[name].break_misses += (row.break_misses || 0);
+            }
+        });
+
+        // Filter strict Head-to-Head matches between p1 and p2
+        Object.values(matchGroups).forEach(group => {
+            const playerNamesInMatch = group.map(r => r.player_name);
+            if (playerNamesInMatch.includes(p1) && playerNamesInMatch.includes(p2)) {
+                group.forEach(r => {
+                    if (r.is_winner && headToHeadWins[r.player_name] !== undefined) {
+                        headToHeadWins[r.player_name]++;
+                    }
+                });
             }
         });
 
@@ -880,7 +897,7 @@
             type: 'bar',
             data: {
                 labels: [p1, p2],
-                datasets: [{ data: [aggregation[p1].wins, aggregation[p2].wins], backgroundColor: ['#38bdf8', '#a78bfa'] }]
+                datasets: [{ data: [headToHeadWins[p1], headToHeadWins[p2]], backgroundColor: ['#38bdf8', '#a78bfa'] }]
             },
             options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#334155' }, ticks: { stepSize: 1 } } } }
         });
