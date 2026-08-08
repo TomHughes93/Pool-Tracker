@@ -93,6 +93,15 @@
         .auth-status { font-size: 10px; margin-top: 2px; font-weight: bold; }
         
         .quick-bypass-box { margin-top: 6px; border: 1px solid #ea580c; background: #1e1b18; padding: 4px; text-align: left; }
+        
+        /* Killer Panel Styles */
+        .killer-panel { display: none; background: #0f172a; border: 1px solid #334155; padding: 6px; color: #f1f5f9; }
+        .killer-input-row { display: flex; gap: 2px; margin-bottom: 4px; }
+        .killer-input { flex: 1; padding: 6px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 12px; height: 36px; }
+        .killer-player-item { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 6px; margin-bottom: 2px; border: 1px solid #334155; font-size: 13px; font-weight: bold; }
+        .killer-scoreboard-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-size: 14px; font-weight: 700; background: #1e293b; margin-bottom: 2px; border: 1px solid #334155; }
+        .killer-lives { color: #f59e0b; font-weight: 900; }
+        .killer-rules-box { background: #1e293b; border: 1px solid #334155; padding: 6px; margin-bottom: 6px; font-size: 11px; color: #94a3b8; line-height: 1.3; display: none; }
     </style>
 </head>
 <body>
@@ -100,88 +109,90 @@
 <div class="container">
     <h2>Pool Tracker</h2>
     
-    <div class="scoreboard">
-        <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
-        <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
-        <hr style="border: 0; border-top: 1px solid #334155; margin: 4px 0;">
-        <div class="score-row" id="p1-row">
-            <div class="player-info">
-                <span id="p1-name-display">Ginge</span>
-                <span class="session-tally" id="p1-tally">0W - 0L</span>
-                <span class="foul-tally" id="p1-fouls" style="display: none;">0 Fouls</span>
-            </div>
-            <span class="color-indicator" id="p1-color-dot"></span>
-        </div>
-        <div class="score-row" id="p2-row">
-            <div class="player-info">
-                <span id="p2-name-display">Schmidty</span>
-                <span class="session-tally" id="p2-tally">0W - 0L</span>
-                <span class="foul-tally" id="p2-fouls" style="display: none;">0 Fouls</span>
-            </div>
-            <span class="color-indicator" id="p2-color-dot"></span>
-        </div>
-    </div>
-
-    <div class="ball-rack-container" id="visual-rack" style="display: none;">
-        <div class="ball-rack-title" id="rack-title">Remaining Table Balls</div>
-        <div class="ball-rack-row" id="ball-row"></div>
-        <div class="rack-adjustments">
-            <button class="adj-btn" onclick="breakPotAdjust('Red', -1)">-1 Red</button>
-            <button class="adj-btn" onclick="breakPotAdjust('Yellow', -1)">-1 Yellow</button>
-        </div>
-    </div>
-
-    <div class="section-box" id="setup-section">
-        <div class="section-title">Match Setup</div>
-        <div class="grid-2" style="margin-bottom: 4px;">
-            <select id="p1-select" onchange="updatePlayerNames()">
-                <option value="Ginge">Ginge</option>
-                <option value="Schmidty">Schmidty</option>
-                <option value="Matt">Matt</option>
-                <option value="Ethan">Ethan</option>
-                <option value="Jon">Jon</option>
-                <option value="Cal">Cal</option>
-                <option value="Aid">Aid</option>
-                <option value="Mitch">Mitch</option>
-                <option value="Rawlins">Rawlins</option>
-                <option value="Guest 1">Guest 1</option>
-                <option value="Guest 2">Guest 2</option>
-            </select>
-            <select id="p2-select" onchange="updatePlayerNames()">
-                <option value="Schmidty">Schmidty</option>
-                <option value="Ginge">Ginge</option>
-                <option value="Matt">Matt</option>
-                <option value="Ethan">Ethan</option>
-                <option value="Jon">Jon</option>
-                <option value="Cal">Cal</option>
-                <option value="Aid">Aid</option>
-                <option value="Mitch">Mitch</option>
-                <option value="Rawlins">Rawlins</option>
-                <option value="Guest 1">Guest 1</option>
-                <option value="Guest 2">Guest 2</option>
-            </select>
-        </div>
-        <select id="break-select" onchange="setStartingPlayer()">
-            <option value="">-- Who is breaking? --</option>
-            <option value="p1">Ginge</option>
-            <option value="p2">Schmidty</option>
-        </select>
-    </div>
-
-    <div class="color-assign-box" id="color-assignment-ui" style="display: none;">
-        <div class="color-assign-title">Open Table: Assign Colors</div>
-        <div class="color-btn-group">
-            <button class="color-assign-btn btn-claim-red" onclick="assignTableColors('Red')">Claim Reds</button>
-            <button class="color-assign-btn btn-claim-yellow" onclick="assignTableColors('Yellow')">Claim Yellows</button>
-        </div>
-    </div>
-
     <div class="tab-menu">
         <button class="tab-btn active" id="tab-track" onclick="switchTab('track')">Tracking Engine</button>
         <button class="tab-btn" id="tab-stats" onclick="switchTab('stats')">Performance Metrics</button>
+        <button class="tab-btn" id="tab-killer" onclick="switchTab('killer')">Killer Mode</button>
     </div>
 
+    <!-- TRACKING ENGINE PANEL -->
     <div id="panel-track">
+        <div class="scoreboard">
+            <div class="turn-indicator" id="turn-display">Turn: Match Not Started</div>
+            <div class="visits-indicator" id="visits-display">Visits Remaining: 1</div>
+            <hr style="border: 0; border-top: 1px solid #334155; margin: 4px 0;">
+            <div class="score-row" id="p1-row">
+                <div class="player-info">
+                    <span id="p1-name-display">Ginge</span>
+                    <span class="session-tally" id="p1-tally">0W - 0L</span>
+                    <span class="foul-tally" id="p1-fouls" style="display: none;">0 Fouls</span>
+                </div>
+                <span class="color-indicator" id="p1-color-dot"></span>
+            </div>
+            <div class="score-row" id="p2-row">
+                <div class="player-info">
+                    <span id="p2-name-display">Schmidty</span>
+                    <span class="session-tally" id="p2-tally">0W - 0L</span>
+                    <span class="foul-tally" id="p2-fouls" style="display: none;">0 Fouls</span>
+                </div>
+                <span class="color-indicator" id="p2-color-dot"></span>
+            </div>
+        </div>
+
+        <div class="ball-rack-container" id="visual-rack" style="display: none;">
+            <div class="ball-rack-title" id="rack-title">Remaining Table Balls</div>
+            <div class="ball-rack-row" id="ball-row"></div>
+            <div class="rack-adjustments">
+                <button class="adj-btn" onclick="breakPotAdjust('Red', -1)">-1 Red</button>
+                <button class="adj-btn" onclick="breakPotAdjust('Yellow', -1)">-1 Yellow</button>
+            </div>
+        </div>
+
+        <div class="section-box" id="setup-section">
+            <div class="section-title">Match Setup</div>
+            <div class="grid-2" style="margin-bottom: 4px;">
+                <select id="p1-select" onchange="updatePlayerNames()">
+                    <option value="Ginge">Ginge</option>
+                    <option value="Schmidty">Schmidty</option>
+                    <option value="Matt">Matt</option>
+                    <option value="Ethan">Ethan</option>
+                    <option value="Jon">Jon</option>
+                    <option value="Cal">Cal</option>
+                    <option value="Aid">Aid</option>
+                    <option value="Mitch">Mitch</option>
+                    <option value="Rawlins">Rawlins</option>
+                    <option value="Guest 1">Guest 1</option>
+                    <option value="Guest 2">Guest 2</option>
+                </select>
+                <select id="p2-select" onchange="updatePlayerNames()">
+                    <option value="Schmidty">Schmidty</option>
+                    <option value="Ginge">Ginge</option>
+                    <option value="Matt">Matt</option>
+                    <option value="Ethan">Ethan</option>
+                    <option value="Jon">Jon</option>
+                    <option value="Cal">Cal</option>
+                    <option value="Aid">Aid</option>
+                    <option value="Mitch">Mitch</option>
+                    <option value="Rawlins">Rawlins</option>
+                    <option value="Guest 1">Guest 1</option>
+                    <option value="Guest 2">Guest 2</option>
+                </select>
+            </div>
+            <select id="break-select" onchange="setStartingPlayer()">
+                <option value="">-- Who is breaking? --</option>
+                <option value="p1">Ginge</option>
+                <option value="p2">Schmidty</option>
+            </select>
+        </div>
+
+        <div class="color-assign-box" id="color-assignment-ui" style="display: none;">
+            <div class="color-assign-title">Open Table: Assign Colors</div>
+            <div class="color-btn-group">
+                <button class="color-assign-btn btn-claim-red" onclick="assignTableColors('Red')">Claim Reds</button>
+                <button class="color-assign-btn btn-claim-yellow" onclick="assignTableColors('Yellow')">Claim Yellows</button>
+            </div>
+        </div>
+
         <div class="section-box">
             <div class="section-title">Game Log</div>
             <div class="log-box" id="log-box">Select who breaks to begin tracking.</div>
@@ -205,8 +216,14 @@
                 <button class="btn-loss" onclick="logShot('Loss of Frame - Potted Black and White')">Black + White (Loss)</button>
             </div>
         </div>
+
+        <div class="footer-actions">
+            <button class="btn-undo" onclick="undoLastShot()" style="opacity: 0.4; pointer-events: none;" id="undo-btn"><= Undo</button>
+            <button class="btn-new" onclick="resetContainer()">New Game</button>
+        </div>
     </div>
 
+    <!-- PERFORMANCE METRICS PANEL -->
     <div id="panel-stats" class="stats-panel">
         <div id="stats-loader" class="stats-loading">Syncing metrics with Supabase backend...</div>
         <div id="stats-charts-wrapper" style="display: none;">
@@ -225,9 +242,48 @@
         </div>
     </div>
 
-    <div class="footer-actions">
-        <button class="btn-undo" onclick="undoLastShot()" style="opacity: 0.4; pointer-events: none;" id="undo-btn"><= Undo</button>
-        <button class="btn-new" onclick="resetContainer()">New Game</button>
+    <!-- KILLER MODE PANEL -->
+    <div id="panel-killer" class="killer-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div class="section-title" style="margin-bottom: 0;">Killer Pool Setup</div>
+            <button class="adj-btn" style="padding: 4px 8px; font-size: 10px;" onclick="toggleKillerRules()">Toggle Rules</button>
+        </div>
+
+        <div class="killer-rules-box" id="killer-rules-box">
+            <strong>Killer Rules Summary:</strong><br>
+            • Each player starts with 3 lives.<br>
+            • 1 shot per turn to legally pot any object ball.<br>
+            • Miss, scratch (white in pocket), or foul loses 1 life.<br>
+            • Potting the 8-ball or 2 balls in one shot awards +1 life.<br>
+            • Last player standing with lives wins!
+        </div>
+
+        <div id="killer-setup-section">
+            <div class="killer-input-row">
+                <input type="text" id="killer-name-input" class="killer-input" placeholder="Enter player name..." onkeypress="checkKillerEnter(event)">
+                <button class="adj-btn" style="background: #38bdf8; color: #0f172a; flex: 0 0 80px;" onclick="addKillerPlayer()">Add</button>
+            </div>
+            <div class="section-title">Player Roster</div>
+            <div id="killer-roster-list" style="max-height: 120px; overflow-y: auto; margin-bottom: 4px;">
+                <div style="font-size: 11px; color: #64748b; text-align: center; padding: 10px;">No players added yet.</div>
+            </div>
+            <button class="btn-pot" style="padding: 12px; margin-bottom: 4px;" onclick="startKillerGame()">Start Randomized Game</button>
+        </div>
+
+        <div id="killer-live-section" style="display: none;">
+            <div class="section-title" id="killer-turn-heading" style="font-size: 13px; color: #4ade80; margin-bottom: 4px;">Current Turn: None</div>
+            <div id="killer-scoreboard-list" style="margin-bottom: 6px;"></div>
+            
+            <div class="section-title">Turn Actions</div>
+            <div class="grid-2" style="margin-bottom: 2px;">
+                <button class="btn-pot" style="padding: 16px;" onclick="killerAction('pot')">Pot Ball (Pass Turn)</button>
+                <button class="btn-miss" style="padding: 16px;" onclick="killerAction('lose_life')">Miss / Foul (-1 Life)</button>
+            </div>
+            <div class="grid-2" style="margin-bottom: 6px;">
+                <button class="adj-btn" style="background: #3b82f6; color: #fff; padding: 12px;" onclick="killerAction('bonus_life')">+1 Life (Bonus)</button>
+                <button class="adj-btn" style="background: #1e293b; color: #cbd5e1; padding: 12px;" onclick="resetKillerGame()">Reset Killer</button>
+            </div>
+        </div>
     </div>
 
     <div class="auth-section">
@@ -277,6 +333,11 @@
     let matchStats = {};
     let actionHistoryStack = [];
     let activeCharts = {};
+
+    // Killer Mode Variables
+    let killerPlayers = [];
+    let killerTurnIndex = 0;
+    let killerGameActive = false;
 
     function initMatchStats() {
         matchStats = {
@@ -780,9 +841,7 @@
             document.getElementById('p2-color-dot').className = "color-indicator";
         }
 
-        // If undoing from a finished frame state, re-enable controls view
         if (!activePlayer) {
-            // Restore active player or default based on snapshot
             activePlayer = lastState.activePlayer;
             document.getElementById('setup-section').style.display = "none";
             document.getElementById('visual-rack').style.display = "block";
@@ -810,13 +869,13 @@
     function switchTab(targetTab) {
         document.getElementById('tab-track').className = 'tab-btn' + (targetTab === 'track' ? ' active' : '');
         document.getElementById('tab-stats').className = 'tab-btn' + (targetTab === 'stats' ? ' active' : '');
+        document.getElementById('tab-killer').className = 'tab-btn' + (targetTab === 'killer' ? ' active' : '');
         
-        if(targetTab === 'track') {
-            document.getElementById('panel-track').style.display = 'block';
-            document.getElementById('panel-stats').style.display = 'none';
-        } else {
-            document.getElementById('panel-track').style.display = 'none';
-            document.getElementById('panel-stats').style.display = 'block';
+        document.getElementById('panel-track').style.display = (targetTab === 'track' ? 'block' : 'none');
+        document.getElementById('panel-stats').style.display = (targetTab === 'stats' ? 'block' : 'none');
+        document.getElementById('panel-killer').style.display = (targetTab === 'killer' ? 'block' : 'none');
+
+        if(targetTab === 'stats') {
             fetchHistoricalMetrics();
         }
     }
@@ -933,6 +992,127 @@
             },
             options: { responsive: true, scales: { y: { min: 0, grid: { color: '#334155' } } } }
         });
+    }
+
+    // Killer Mode Logic Functions
+    function toggleKillerRules() {
+        const box = document.getElementById('killer-rules-box');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function checkKillerEnter(e) {
+        if (e.key === 'Enter') addKillerPlayer();
+    }
+
+    function addKillerPlayer() {
+        const input = document.getElementById('killer-name-input');
+        const name = input.value.trim();
+        if (!name) return;
+        if (killerPlayers.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+            alert("Player already added.");
+            return;
+        }
+        killerPlayers.push({ name: name, lives: 3 });
+        input.value = "";
+        renderKillerRoster();
+    }
+
+    function removeKillerPlayer(index) {
+        killerPlayers.splice(index, 1);
+        renderKillerRoster();
+    }
+
+    function renderKillerRoster() {
+        const list = document.getElementById('killer-roster-list');
+        if (killerPlayers.length === 0) {
+            list.innerHTML = '<div style="font-size: 11px; color: #64748b; text-align: center; padding: 10px;">No players added yet.</div>';
+            return;
+        }
+        list.innerHTML = "";
+        killerPlayers.forEach((p, idx) => {
+            list.innerHTML += `
+                <div class="killer-player-item">
+                    <span>${p.name}</span>
+                    <button class="adj-btn" style="padding: 2px 6px; font-size: 10px; background: #ef4444; color: #fff; flex: 0 0 auto;" onclick="removeKillerPlayer(${idx})">Remove</button>
+                </div>
+            `;
+        });
+    }
+
+    function startKillerGame() {
+        if (killerPlayers.length < 2) {
+            alert("Add at least 2 players to start Killer.");
+            return;
+        }
+        // Shuffle array randomly
+        for (let i = killerPlayers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [killerPlayers[i], killerPlayers[j]] = [killerPlayers[j], killerPlayers[i]];
+        }
+        killerPlayers.forEach(p => p.lives = 3);
+        killerTurnIndex = 0;
+        killerGameActive = true;
+
+        document.getElementById('killer-setup-section').style.display = 'none';
+        document.getElementById('killer-live-section').style.display = 'block';
+        updateKillerDisplay();
+    }
+
+    function updateKillerDisplay() {
+        const active = killerPlayers[killerTurnIndex];
+        document.getElementById('killer-turn-heading').innerText = "Current Turn: " + active.name;
+
+        const list = document.getElementById('killer-scoreboard-list');
+        list.innerHTML = "";
+        killerPlayers.forEach((p, idx) => {
+            const isCurrent = (idx === killerTurnIndex);
+            list.innerHTML += `
+                <div class="killer-scoreboard-row" style="${isCurrent ? 'border-color: #4ade80;' : ''}">
+                    <span style="${isCurrent ? 'color: #4ade80;' : ''}">${p.name} ${isCurrent ? '▶' : ''}</span>
+                    <span class="killer-lives">${p.lives} Lives</span>
+                </div>
+            `;
+        });
+    }
+
+    function killerAction(action) {
+        if (!killerGameActive) return;
+        const current = killerPlayers[killerTurnIndex];
+
+        if (action === 'pot') {
+            // Successful pot passes turn to next alive player
+        } else if (action === 'lose_life') {
+            current.lives--;
+            if (current.lives <= 0) {
+                alert(current.name + " has been eliminated!");
+            }
+        } else if (action === 'bonus_life') {
+            current.lives++;
+        }
+
+        // Check if game is won (only 1 player with > 0 lives)
+        const alivePlayers = killerPlayers.filter(p => p.lives > 0);
+        if (alivePlayers.length === 1) {
+            alert("🏆 " + alivePlayers[0].name + " wins Killer Pool!");
+            resetKillerGame();
+            return;
+        }
+
+        // Advance to next alive player
+        do {
+            killerTurnIndex = (killerTurnIndex + 1) % killerPlayers.length;
+        } while (killerPlayers[killerTurnIndex].lives <= 0);
+
+        updateKillerDisplay();
+    }
+
+    function resetKillerGame() {
+        killerGameActive = false;
+        killerPlayers = [];
+        killerTurnIndex = 0;
+        document.getElementById('killer-live-section').style.display = 'none';
+        document.getElementById('killer-setup-section').style.display = 'block';
+        renderKillerRoster();
     }
 
     function saveState() {
