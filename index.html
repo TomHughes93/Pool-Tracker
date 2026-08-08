@@ -709,7 +709,6 @@
             breakerPlayer = "";
             p1Fouls = 0;
             p2Fouls = 0;
-            actionHistoryStack = [];
             updateUndoButtonVisibility();
             localStorage.removeItem("pool_tracker_state");
             updateDisplay();
@@ -781,6 +780,18 @@
             document.getElementById('p2-color-dot').className = "color-indicator";
         }
 
+        // If undoing from a finished frame state, re-enable controls view
+        if (!activePlayer) {
+            // Restore active player or default based on snapshot
+            activePlayer = lastState.activePlayer;
+            document.getElementById('setup-section').style.display = "none";
+            document.getElementById('visual-rack').style.display = "block";
+            document.getElementById('controls-section').style.pointerEvents = "auto";
+            document.getElementById('controls-section').style.opacity = "1";
+            document.getElementById('p1-fouls').style.display = "inline-block";
+            document.getElementById('p2-fouls').style.display = "inline-block";
+        }
+
         updateFoulDisplay();
         updateDisplay();
         renderBallRack();
@@ -840,13 +851,11 @@
 
         let headToHeadWins = { [p1]: 0, [p2]: 0 };
 
-        // Group rows by match_id to verify true head-to-head encounters
         let matchGroups = {};
         dataRows.forEach(row => {
             if (!matchGroups[row.match_id]) matchGroups[row.match_id] = [];
             matchGroups[row.match_id].push(row);
 
-            // Accumulate overall player totals for the other metrics
             let name = row.player_name;
             if (aggregation[name]) {
                 aggregation[name].total++;
@@ -859,7 +868,6 @@
             }
         });
 
-        // Filter strict Head-to-Head matches between p1 and p2
         Object.values(matchGroups).forEach(group => {
             const playerNamesInMatch = group.map(r => r.player_name);
             if (playerNamesInMatch.includes(p1) && playerNamesInMatch.includes(p2)) {
