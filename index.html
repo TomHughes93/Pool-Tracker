@@ -841,21 +841,29 @@
             document.getElementById('p2-color-dot').className = "color-indicator";
         }
 
+        // Restore UI controls and visual elements directly if a frame just ended prematurely
         if (!activePlayer) {
             activePlayer = lastState.activePlayer;
-            document.getElementById('setup-section').style.display = "none";
-            document.getElementById('visual-rack').style.display = "block";
-            document.getElementById('controls-section').style.pointerEvents = "auto";
-            document.getElementById('controls-section').style.opacity = "1";
-            document.getElementById('p1-fouls').style.display = "inline-block";
-            document.getElementById('p2-fouls').style.display = "inline-block";
         }
+
+        document.getElementById('setup-section').style.display = "none";
+        document.getElementById('visual-rack').style.display = "block";
+        document.getElementById('controls-section').style.pointerEvents = "auto";
+        document.getElementById('controls-section').style.opacity = "1";
+        document.getElementById('p1-fouls').style.display = "inline-block";
+        document.getElementById('p2-fouls').style.display = "inline-block";
 
         updateFoulDisplay();
         updateDisplay();
         renderBallRack();
         updateUndoButtonVisibility();
         
+        // Remove the accidental log entry from the display box
+        const logBox = document.getElementById('log-box');
+        if (logBox.lastElementChild) {
+            logBox.removeChild(logBox.lastElementChild);
+        }
+
         addToLog("↩ Undone: " + lastState.label);
         saveState();
     }
