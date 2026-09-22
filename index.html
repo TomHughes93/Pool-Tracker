@@ -15,6 +15,7 @@
         .score-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; font-size: 14px; font-weight: 700; color: #f1f5f9; border-bottom: 1px solid #1e293b; transition: all 0.2s ease; }
         .score-row:last-child { border-bottom: none; }
         .player-info { display: flex; align-items: center; gap: 4px; }
+        #p1-name-display, #p2-name-display { font-size: 18px; }
         .session-tally { font-size: 11px; color: #cbd5e1; font-weight: bold; background: #334155; padding: 1px 3px; }
         .foul-tally { font-size: 11px; color: #ffffff; font-weight: bold; background: #ea580c; padding: 1px 3px; }
         .color-indicator { width: 12px; height: 12px; display: inline-block; visibility: hidden; border: 1px solid #000; }
@@ -23,7 +24,7 @@
         .turn-indicator { font-size: 13px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin-bottom: 1px; }
         .visits-indicator { font-size: 15px; font-weight: 800; color: #38bdf8; }
         
-        .active-player-highlight { color: #4ade80 !important; font-size: 16px !important; font-weight: 900 !important; text-shadow: 0 0 8px rgba(74, 222, 128, 0.4); }
+        .active-player-highlight { color: #4ade80 !important; font-size: 18px !important; font-weight: 900 !important; text-shadow: 0 0 8px rgba(74, 222, 128, 0.4); }
         .active-player-highlight::before { content: "▶ "; color: #4ade80; animation: pulse 1s infinite alternate; }
         @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
 
@@ -526,8 +527,8 @@
             const safetyBuffer = 43200; 
             
             if ((loginTime + extendedExpirySeconds) - currentTime < safetyBuffer) {
-                console.log("Database token entering critical security expiration window. Cleaning local authorization state.");
                 handleLogout();
+                alert("Your 7-day login session has expired. Please log back in to save match data.");
             }
         }
     }
@@ -841,7 +842,6 @@
             document.getElementById('p2-color-dot').className = "color-indicator";
         }
 
-        // Restore UI controls and visual elements directly if a frame just ended prematurely
         if (!activePlayer) {
             activePlayer = lastState.activePlayer;
         }
@@ -858,7 +858,6 @@
         renderBallRack();
         updateUndoButtonVisibility();
         
-        // Remove the accidental log entry from the display box
         const logBox = document.getElementById('log-box');
         if (logBox.lastElementChild) {
             logBox.removeChild(logBox.lastElementChild);
@@ -1002,7 +1001,6 @@
         });
     }
 
-    // Killer Mode Logic Functions
     function toggleKillerRules() {
         const box = document.getElementById('killer-rules-box');
         box.style.display = box.style.display === 'block' ? 'none' : 'block';
@@ -1052,7 +1050,6 @@
             alert("Add at least 2 players to start Killer.");
             return;
         }
-        // Shuffle array randomly
         for (let i = killerPlayers.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [killerPlayers[i], killerPlayers[j]] = [killerPlayers[j], killerPlayers[i]];
@@ -1088,7 +1085,7 @@
         const current = killerPlayers[killerTurnIndex];
 
         if (action === 'pot') {
-            // Successful pot passes turn to next alive player
+            
         } else if (action === 'lose_life') {
             current.lives--;
             if (current.lives <= 0) {
@@ -1098,7 +1095,6 @@
             current.lives++;
         }
 
-        // Check if game is won (only 1 player with > 0 lives)
         const alivePlayers = killerPlayers.filter(p => p.lives > 0);
         if (alivePlayers.length === 1) {
             alert("🏆 " + alivePlayers[0].name + " wins Killer Pool!");
@@ -1106,7 +1102,6 @@
             return;
         }
 
-        // Advance to next alive player
         do {
             killerTurnIndex = (killerTurnIndex + 1) % killerPlayers.length;
         } while (killerPlayers[killerTurnIndex].lives <= 0);
